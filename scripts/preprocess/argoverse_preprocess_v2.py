@@ -59,10 +59,10 @@ MIN_HISTORY_LEN = 20     # 最少历史帧数
 def process_one(args):
     """
     处理单个场景的完整流程。
-    
+
     输入: (csv_path, split_name, cleaned_dir, processed_dir)
     输出: 处理结果元组
-    
+
     流程:
       1. 读取 CSV → 解析轨迹
       2. 校验 AV/AGENT 存在性
@@ -363,19 +363,6 @@ def main():
     # 生成清洗报告
     print("\n生成清洗报告...")
     generate_report()
-
-    # 配置 DenseTNT 数据路径（创建符号链接）
-    print("\n配置 DenseTNT 数据路径...")
-    for split in ["train", "val"]:
-        src = os.path.join(CLEANED_DIR, split)
-        dst_train = os.path.join(SCRIPT_DIR, "model", "DenseTNT-main", split, "data")
-        if os.path.exists(src) and not os.path.exists(dst_train):
-            os.makedirs(os.path.dirname(dst_train), exist_ok=True)
-            try:
-                os.symlink(src, dst_train)
-                print(f"  链接: {dst_train} -> {src}")
-            except OSError:
-                print(f"  跳过链接（需管理员权限）: {dst_train}")
 
     print("\n✅ 全部完成!")
     print(f"  DenseTNT 数据: {CLEANED_DIR}")

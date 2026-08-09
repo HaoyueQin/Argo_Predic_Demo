@@ -45,22 +45,25 @@
 下载 **Argoverse 1** 运动预测数据集：
 
 - 官方地址：<https://www.argoverse.org/av1.html>（训练集约 20.5 万场景、验证集约 3.9 万场景）
-- 高精地图**不随本仓库提供**（上游 argoverse-api 的 `.gitignore` 排除了 `map_files/`），需从 Argoverse 1 官网单独下载并设置 `ARGOVERSE_MAP_DIR`
-  （`argoverse-api/argoverse/utils/` 加载器需要 `ARGOVERSE_MAP_DIR` 环境变量）
+- 高精地图**不随本仓库提供**（上游 argoverse-api 的 `.gitignore` 排除了 `map_files/`），需从 Argoverse 1 官网单独下载并放到
+  `argoverse-api/map_files/` —— `ArgoverseMap` 加载器按仓库相对路径解析该目录（无需环境变量，见
+  `argoverse-api/argoverse/map_representation/map_api.py`）
 
 **原始数据不包含在本仓库中**。预期目录布局：
 
 ```
 data/raw/
 ├── train/data/*.csv            # 训练场景
-├── val/data/*.csv              # 验证场景
-└── argoverse_data/map_files/   # 高精地图
+└── val/data/*.csv              # 验证场景
 ```
+
+高精地图放在 `argoverse-api/map_files/`（见上文）。
 
 ## 环境安装
 
 ```bash
 pip install -r requirements_densetnt.txt   # 训练环境（torch、numpy、cython 等）
+pip install -e argoverse-api/              # Argoverse API（仓库自带上游代码，含完整 git 历史）
 cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
 ```
 

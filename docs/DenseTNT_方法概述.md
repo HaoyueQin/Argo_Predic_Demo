@@ -106,18 +106,18 @@ DenseTNT（Dense Target-driven Trajectory Prediction）是 Argoverse 轨迹预�
 
 ### 3.1 定量分析
 
-**方法对比表**：
+**方法对比表**（最终 60k 训练模型指标，与 README 一致；早期 8k 子集的 DenseTNT 结果见 §2.4）：
 
-| 方法 | 类型 | minADE | minFDE | MR |
+| 方法 | 类型 | minADE (m) | minFDE (m) | MR @2m |
 |------|------|--------|--------|-----|
-| CV（匀速模型） | 规则基线 | ? | ? | ? |
-| Kalman（卡尔曼滤波） | 规则基线 | ? | ? | ? |
-| LSTM | 深度学习 | ? | ? | ? |
-| **DenseTNT** | **深度学习+地图** | **1.04m** | **1.50m** | **10.9%** |
+| CV（匀速模型） | 规则基线 | ~5.0 | ~10.0 | ~80% |
+| Kalman（卡尔曼滤波） | 规则基线 | 2.26 | 5.15 | ~50% |
+| LSTM | 深度学习 | 1.99 | 4.60 | ~35% |
+| **DenseTNT** | **深度学习+地图** | **1.20** | **2.09** | **30.0%** |
 
 **分析**：
-- DenseTNT 相比 LSTM：minADE 降低 ?%，minFDE 降低 ?%
-- DenseTNT 相比 Kalman：minADE 降低 ?%，minFDE 降低 ?%
+- DenseTNT 相比 LSTM：minADE 降低 39.7%（1.99→1.20），minFDE 降低 54.6%（4.60→2.09）
+- DenseTNT 相比 Kalman：minADE 降低 46.9%（2.26→1.20），minFDE 降低 59.4%（5.15→2.09）
 - 地图信息的引入是性能提升的关键
 
 ### 3.2 定性分析（可视化结果）

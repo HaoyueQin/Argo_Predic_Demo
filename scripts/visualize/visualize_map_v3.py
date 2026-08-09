@@ -38,7 +38,9 @@ OUTPUT_DIR = os.path.join(REPO_ROOT, "outputs", "visualizations")
 # DenseTNT 代码按仓库根布局 import（utils/modeling 位于 <repo>/src/）
 sys.path.insert(0, REPO_ROOT)
 sys.path.insert(0, SRC_DIR)
-os.environ['ARGOVERSE_MAP_DIR'] = os.path.join(REPO_ROOT, 'data/raw/argoverse_data/map_files')
+# ArgoverseMap 按仓库相对路径 <repo>/argoverse-api/map_files/ 加载地图（见 map_api.py），
+# 此处环境变量仅作兼容备用
+os.environ['ARGOVERSE_MAP_DIR'] = os.path.join(REPO_ROOT, 'argoverse-api', 'map_files')
 
 from argoverse.map_representation.map_api import ArgoverseMap
 import utils

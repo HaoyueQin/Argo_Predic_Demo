@@ -51,22 +51,26 @@ Download the **Argoverse 1** motion forecasting dataset:
 - Official: <https://www.argoverse.org/av1.html> (train ~205k scenes, val ~39k scenes)
 - HD maps are **not** shipped with this repo (the upstream Argoverse API
   `.gitignore` excludes `map_files/`). Download them from Argoverse 1
-  (<https://www.argoverse.org/av1.html>) and set `ARGOVERSE_MAP_DIR`
-  (`argoverse-api/argoverse/utils/` loader expects it)
+  (<https://www.argoverse.org/av1.html>) and place them under
+  `argoverse-api/map_files/` — the `ArgoverseMap` loader resolves this
+  directory relative to the repo (no environment variable needed, see
+  `argoverse-api/argoverse/map_representation/map_api.py`)
 
 The raw data is **not** stored in this repository. Expected layout:
 
 ```
 data/raw/
 ├── train/data/*.csv            # training scenes
-├── val/data/*.csv              # validation scenes
-└── argoverse_data/map_files/   # HD maps
+└── val/data/*.csv              # validation scenes
 ```
+
+HD maps go to `argoverse-api/map_files/` (see above).
 
 ## Environment
 
 ```bash
 pip install -r requirements_densetnt.txt   # training env (torch, numpy, cython, ...)
+pip install -e argoverse-api/              # Argoverse API (vendored upstream, full git history)
 cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
 ```
 

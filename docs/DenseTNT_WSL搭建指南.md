@@ -138,10 +138,11 @@ pip install tqdm matplotlib scipy cython
 
 ### Step 3.2：安装 Argoverse API
 
+本仓库已自带 Argoverse API（`argoverse-api/` 目录，保留上游完整 git 历史），直接本地安装即可：
+
 ```bash
-git clone https://github.com/argoai/argoverse-api.git /tmp/argoverse-api
-cd /tmp/argoverse-api
-pip install -e .
+cd <project_root>
+pip install -e argoverse-api
 ```
 
 验证：
@@ -152,11 +153,13 @@ python3 -c "from argoverse.map_representation.map_api import ArgoverseMap; print
 
 ### Step 3.3：下载 Argoverse 1 地图数据
 
-Argoverse 1 地图数据约 2GB，需要从官方下载：
+Argoverse 1 地图数据约 2GB，需要从官方下载。ArgoverseMap 加载器通过**仓库相对路径**
+`argoverse-api/map_files/` 定位地图（见 `argoverse-api/argoverse/map_representation/map_api.py`），
+无需设置任何环境变量：
 
 ```bash
 cd <project_root>
-mkdir -p data/raw/argoverse_data/map
+mkdir -p argoverse-api/map_files
 ```
 
 下载地图文件（如果官方链接失效，去 https://www.argoverse.org/av1.html 找最新链接）：
@@ -165,19 +168,16 @@ mkdir -p data/raw/argoverse_data/map
 # 下载地图压缩包
 wget https://s3.amazonaws.com/argoai-argoverse/hd_maps.tar.gz -O /tmp/hd_maps.tar.gz
 
-# 解压到项目目录
-tar -xzf /tmp/hd_maps.tar.gz -C data/raw/argoverse_data/map/
+# 解压（若压缩包含 map_files/ 顶层目录，直接解压到 argoverse-api/ 下即可）
+tar -xzf /tmp/hd_maps.tar.gz -C argoverse-api/
 
-# 设置环境变量，Argoverse API 需要这个来找到地图
-export ARGOVERSE_RAW_DATA_DIR="$(pwd)/data/raw/argoverse_data"
-# 建议写入 ~/.bashrc 持久化
-echo 'export ARGOVERSE_RAW_DATA_DIR="<project_root>/data/raw/argoverse_data"' >> ~/.bashrc
+# 若解压结果不在 argoverse-api/map_files/，请把内容移动到该目录
 ```
 
 解压后的目录结构应该是：
 
 ```
-data/raw/argoverse_data/map/
+argoverse-api/map_files/
   ├── argoverse_HD_maps.json
   ├── MIA_10316.json
   ├── PIT_10315.json
@@ -330,7 +330,7 @@ python src/do_eval.py --argoverse --future_frame_num 30 \
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | `nvidia-smi` 在 WSL 里无输出 | WSL 1 或驱动太旧 | 更新 Windows NVIDIA 驱动，确认 `wsl --version` 显示 v2 |
-| `from argoverse.map_representation...` 报错 | API 未安装或地图数据路径不对 | 检查 `ARGOVERSE_RAW_DATA_DIR` 环境变量 |
+| `from argoverse.map_representation...` 报错 | API 未安装或地图数据路径不对 | 确认已 `pip install -e argoverse-api` 且地图在 `argoverse-api/map_files/` |
 | Cython 编译报错 | 缺少 C++ 编译器 | `sudo apt install build-essential` |
 | 训练 OOM（内存溢出） | batch_size 太大 | 降到 16 或 8 |
 | CUDA out of memory | 同上 + 可能模型太大 | 降 batch size |
