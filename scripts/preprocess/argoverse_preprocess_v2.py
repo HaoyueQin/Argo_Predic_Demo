@@ -126,12 +126,25 @@ def process_one(args):
         av_ts, av_xy = get_track(av_id)
         agent_ts, agent_xy = get_track(agent_id)
 
+        # ── Step 4b: 时间戳单位归一化（仅用于物理量计算）──
+        # Argoverse 1 官方 CSV 的 TIMESTAMP 为微秒（10Hz，间隔约 1e5）。
+        # 异常检测按秒计算，这里把微秒统一换算为秒；输出 CSV 仍保留原始
+        # 时间戳（DenseTNT 加载时做相对化处理，对单位不敏感）。
+        av_ts_raw, agent_ts_raw = av_ts, agent_ts
+        dts = np.diff(np.concatenate([av_ts, agent_ts]))
+        median_dt = float(np.median(dts)) if len(dts) else 0.0
+        if median_dt > 1.0:  # not seconds → microseconds
+            av_ts = av_ts * 1e-6
+            agent_ts = agent_ts * 1e-6
+
         # ── Step 5: 检查历史帧数 ──
         if len(agent_xy) < MIN_HISTORY_LEN:
             return ("skip_short", scene_id)
 
         # ── Step 6: 补齐到 50 帧 ──
-        # 如果轨迹不足 50 帧，用最后一帧的坐标补齐
+        # 如果轨迹不足 50 帧，用最后一帧的坐标补齐。注意：这样会人为制造
+        # "静止未来"（短轨迹被当作车辆停在原地），模型会被训练成倾向预测
+        # 静止、验证指标被稀释；如不希望该行为，应改为丢弃短轨迹。
         if len(agent_xy) < TOTAL_FRAMES:
             pad = TOTAL_FRAMES - len(agent_xy)
             agent_xy = np.vstack([agent_xy, np.tile(agent_xy[-1], (pad, 1))])
@@ -198,13 +211,13 @@ def process_one(args):
         cleaned_path = os.path.join(cleaned_dir, f"{scene_id}.csv")
         with open(cleaned_path, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            # 写入 AV 轨迹
+            # 写入 AV 轨迹（原始时间戳，见 Step 4b）
             for j in range(len(av_ts)):
-                w.writerow([av_ts[j], av_id, "AV", av_xy[j, 0], av_xy[j, 1], city_name])
-            # 写入 AGENT 轨迹（清洗后）
+                w.writerow([av_ts_raw[j], av_id, "AV", av_xy[j, 0], av_xy[j, 1], city_name])
+            # 写入 AGENT 轨迹（清洗后，原始时间戳）
             full_agent = np.vstack([hist_xy, gt_xy])
             for j in range(min(len(agent_ts), TOTAL_FRAMES)):
-                w.writerow([agent_ts[j], agent_id, "AGENT", full_agent[j, 0], full_agent[j, 1], city_name])
+                w.writerow([agent_ts_raw[j], agent_id, "AGENT", full_agent[j, 0], full_agent[j, 1], city_name])
             # 写入 OTHERS 轨迹
             for tid, tlist in tracks.items():
                 if tid in (av_id, agent_id):

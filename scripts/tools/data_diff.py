@@ -55,12 +55,24 @@ def parse_csv(filepath):
     n_future = len(fut)
 
     # Speed (m/s, based on 0.1s intervals)
+    # Argoverse 1 TIMESTAMPs are microseconds (~1e5 apart); normalise to
+    # seconds so speeds are real m/s regardless of the source unit.
     speeds = []
     headings = []
+    dt_list = []
+    for i in range(1, len(agent)):
+        dt = agent[i][0] - agent[i-1][0]
+        if dt > 0:
+            dt_list.append(dt)
+    if dt_list:
+        median_dt = float(np.median(dt_list))
+        unit_scale = 1e-6 if median_dt > 1.0 else 1.0
+    else:
+        unit_scale = 1.0
     for i in range(1, len(agent)):
         dx = agent[i][1] - agent[i-1][1]
         dy = agent[i][2] - agent[i-1][2]
-        dt = agent[i][0] - agent[i-1][0]
+        dt = (agent[i][0] - agent[i-1][0]) * unit_scale
         if dt > 0:
             spd = np.sqrt(dx*dx + dy*dy) / dt
             speeds.append(spd)
@@ -79,16 +91,16 @@ def parse_csv(filepath):
     ) if n_future >= 2 else 0
 
     # Heading change (last 1s of history vs first 1s of future)
+    # Note: arctan2(dy, dx) — y argument comes first.
     h_hist = np.arctan2(
-        hist[-1][1] - hist[-6][1],
-        hist[-1][2] - hist[-6][2]
+        hist[-1][2] - hist[-6][2],
+        hist[-1][1] - hist[-6][1]
     ) if len(hist) >= 6 else 0
     h_fut = np.arctan2(
-        fut[9][1] - fut[4][1],
-        fut[9][2] - fut[4][2]
+        fut[9][2] - fut[4][2],
+        fut[9][1] - fut[4][1]
     ) if n_future >= 10 else 0
-    heading_change = abs(h_fut - h_hist)
-    heading_change = min(heading_change, 2*np.pi - heading_change)
+    heading_change = abs(h_fut - h_hist)  # abs() already lands in [0, pi]
 
     # Other agents count
     n_others = sum(1 for k in id2info if k not in ('AGENT', 'AV'))

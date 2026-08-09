@@ -54,6 +54,19 @@ class TestMinMetrics:
         assert compute_min_ade(preds, target) == pytest.approx(0.0, abs=1e-6)
         assert compute_min_fde(preds, target) == pytest.approx(0.0, abs=1e-6)
 
+    def test_min_ade_official_caliber(self):
+        # Official Argoverse 1: minADE = ADE of the trajectory with minimum FDE,
+        # NOT the minimum ADE across modes. T=3, target = [(0,0),(0,0),(1,0)]:
+        #   mode0: [(0,0),(0,0),(0,0)]  -> ADE=1/3, FDE=1.0
+        #   mode1: [(0,0),(2,0),(1,0)]  -> ADE=2/3, FDE=0.0
+        # min-ADE caliber would pick mode0 (0.333); official caliber picks
+        # mode1 (its FDE is best) and reports its ADE 0.667.
+        preds = torch.tensor([[[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
+                               [[0.0, 0.0], [2.0, 0.0], [1.0, 0.0]]]])
+        target = torch.tensor([[[0.0, 0.0], [0.0, 0.0], [1.0, 0.0]]])
+        assert compute_min_ade(preds, target) == pytest.approx(2.0 / 3.0, rel=1e-5)
+        assert compute_min_fde(preds, target) == pytest.approx(0.0, abs=1e-6)
+
     def test_min_fde_hand_computed(self):
         # B=2, K=2, T=1：每批取最近模态的末点误差
         preds = torch.tensor([[[[0.0, 0.0]], [[2.0, 0.0]]],

@@ -69,6 +69,9 @@ class ConstantVelocityPredictor:
         if self.velocity is None or self.last_pos is None:
             raise RuntimeError("Call fit() before forecast().")
 
+        if steps < 1:
+            raise ValueError(f"steps must be >= 1, got {steps}")
+
         t = np.arange(1, steps + 1, dtype=np.float32).reshape(-1, 1) * self.dt
         preds = self.last_pos + t * self.velocity
         return preds

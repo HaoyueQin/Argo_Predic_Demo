@@ -49,7 +49,11 @@ class ArgoverseV1Dataset:
     def process(self) -> None:
         for raw_path in tqdm(self.raw_paths):
             kwargs = process_argoverse(raw_path)
-            torch.save(kwargs, os.path.join(self.processed_dir, str(kwargs['seq_id']) + '.pt'))
+            # Save under the raw file's stem so the name always matches
+            # self._processed_paths (raw names may carry leading zeros that an
+            # int round-trip would drop)
+            out_name = os.path.splitext(os.path.basename(raw_path))[0] + '.pt'
+            torch.save(kwargs, os.path.join(self.processed_dir, out_name))
 
     def len(self) -> int:
         return len(self._raw_file_names)
@@ -85,6 +89,9 @@ def process_argoverse(raw_path: str,) -> Dict:
     # initialization
     x = torch.zeros(num_nodes, 50, 2, dtype=torch.float)
     edge_index = torch.LongTensor(list(permutations(range(num_nodes), 2))).t().contiguous()
+    # padding_mask: True = invalid/padding (initialized True, valid frames set
+    # to False). NOTE: models/loss_common and models/metrics_common use the
+    # OPPOSITE convention (True = valid) — flip before passing across modules.
     padding_mask = torch.ones(num_nodes, 50, dtype=torch.bool)
     bos_mask = torch.zeros(num_nodes, 20, dtype=torch.bool)
     rotate_angles = torch.zeros(num_nodes, dtype=torch.float)
@@ -122,7 +129,7 @@ def process_argoverse(raw_path: str,) -> Dict:
         'padding_mask': padding_mask,  # [N, 50]
         'bos_mask': bos_mask,  # [N, 20]
         'rotate_angles': rotate_angles,  # [N]
-        'seq_id': int(seq_id),
+        'seq_id': int(seq_id) if str(seq_id).isdigit() else seq_id,
         'av_index': av_index,
         'agent_index': agent_index,
         'city': city,

@@ -113,11 +113,13 @@ def main():
     # --- Model ---
     model = VectorNet(args).to(device)
     ckpt = torch.load(model_path, map_location=device, weights_only=False)
-    model.load_state_dict(ckpt, strict=False)
+    model.load_state_dict(ckpt, strict=True)
     model.eval()
 
     # --- Validation dataset ---
     print('[Eval] Loading validation data...')
+    # ChunkedDataset expects data_dir as a list (see train_v4.py do_validate)
+    args.data_dir = [args_cli.data_dir]
     eval_dataset = ChunkedDataset(args, args_cli.eval_batch_size, to_screen=True)
     eval_loader = torch.utils.data.DataLoader(
         eval_dataset, batch_size=args_cli.eval_batch_size,

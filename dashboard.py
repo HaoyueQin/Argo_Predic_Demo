@@ -143,7 +143,10 @@ def poll_all(state, log_path, hist_path, wd_path):
                             log["sp"] = float(im[-1])
                     # completed epochs from validation lines
                     log["cp"] = len(re.findall(r"\[Val\] Epoch \d+:", txt))
-                    log["dn"] = "Finish." in txt and "TRAINING_ALL_DONE" not in txt
+                    # "Finish." only counts if the log was written recently — a
+                    # stale log from an earlier run must not show as "done"
+                    fresh = (time.time() - os.path.getmtime(log_path)) < 600
+                    log["dn"] = "Finish." in txt and "TRAINING_ALL_DONE" not in txt and fresh
                     lines = txt.strip().split("\n")
                     log["ac"] = bool(re.findall(r"\d+%\|", lines[-1])) if lines else False
                     log["tl"] = [l.strip()[:130] for l in lines[-12:] if l.strip()]
@@ -153,7 +156,9 @@ def poll_all(state, log_path, hist_path, wd_path):
                     all_losses = [float(x) for x in re.findall(r"loss=(\d+\.\d+)", live_txt)]
                     if len(all_losses) > 10:
                         step = max(1, len(all_losses) // 200)
-                        log["ll"] = all_losses[::step] + [all_losses[-1]]
+                        log["ll"] = all_losses[::step]
+                        if step > 1:  # avoid duplicating the last point
+                            log["ll"].append(all_losses[-1])
                         log["ls_arr"] = [i * step for i in range(len(log["ll"]) - 1)] + [len(all_losses) - 1]
                 except Exception:
                     pass
@@ -178,6 +183,9 @@ def poll_all(state, log_path, hist_path, wd_path):
                 r = subprocess.run(["pgrep", "-f", "train_v4"], capture_output=True,
                                    text=True, timeout=2)
                 pids = [int(x) for x in r.stdout.strip().split("\n") if x]
+                # exclude this dashboard process (its own cmdline may contain the
+                # keyword via --log/--watchdog-log arguments)
+                pids = [p for p in pids if p != os.getpid()]
                 if pids:
                     tp = pids[0]
             except Exception:
@@ -186,6 +194,7 @@ def poll_all(state, log_path, hist_path, wd_path):
                 r = subprocess.run(["pgrep", "-f", "watchdog"], capture_output=True,
                                    text=True, timeout=2)
                 pids = [int(x) for x in r.stdout.strip().split("\n") if x]
+                pids = [p for p in pids if p != os.getpid()]
                 if pids:
                     wp = pids[0]
             except Exception:
@@ -261,7 +270,7 @@ def poll_all(state, log_path, hist_path, wd_path):
 def make_handler(state):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path.startswith("/api/state"):
+            if self.path == "/api/state" or self.path.startswith("/api/state?"):
                 with lock:
                     payload = json.dumps(state).encode()
                 self.send_response(200)
@@ -382,7 +391,9 @@ def main():
     threading.Thread(target=poll_all, args=(state, log_path, hist_path, wd_path),
                      daemon=True).start()
 
-    server = http.server.ThreadingHTTPServer(('0.0.0.0', args.port), make_handler(state))
+    # Bind to loopback only: the page shows live training state (log tail,
+    # PIDs) with no authentication — exposing it on 0.0.0.0 would leak to the LAN.
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(state))
     print(f'[Dashboard] http://localhost:{args.port}  (log: {log_path})')
     try:
         server.serve_forever()

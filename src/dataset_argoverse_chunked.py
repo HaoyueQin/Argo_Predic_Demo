@@ -48,9 +48,11 @@ def _init_pool_worker():
     import sys
     sys.stderr.flush()
 
-# PATCHED_CHUNK: _pool_load_file returns (index, compressed_data) instead of compressed_data
+# PATCHED_CHUNK: _pool_load_file returns (index, compressed_data, vector_num)
+# instead of compressed_data, so the main process can aggregate max_vector_num
+# (worker-local updates never propagate back across the fork boundary).
 def _pool_load_file(file_and_args):
-    """Load a single CSV and return (file_index, compressed_pickle)."""
+    """Load a single CSV and return (file_index, compressed_pickle, vector_num)."""
     import zlib as _zlib
     import pickle as _pickle
     import argparse as _argparse
@@ -61,7 +63,8 @@ def _pool_load_file(file_and_args):
         _args = _argparse.Namespace(**args_dict)
         instance = argoverse_get_instance(flines, file, _args)
         if instance is not None:
-            return (idx, _zlib.compress(_pickle.dumps(instance)))
+            return (idx, _zlib.compress(_pickle.dumps(instance)),
+                    instance.get('vector_num', 0))
     except Exception as e:
         if not hasattr(_pool_load_file, '_err_count'):
             _pool_load_file._err_count = 0
@@ -72,7 +75,7 @@ def _pool_load_file(file_and_args):
             import traceback
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
-    return (idx, None)
+    return (idx, None, 0)
 
 
 import utils_cython
@@ -463,6 +466,8 @@ def argoverse_get_instance(lines, file_name, args):
     if vector_num > max_vector_num:
         max_vector_num = vector_num
 
+    mapping['vector_num'] = vector_num  # for cross-process max aggregation
+
     if 'cent_x' not in mapping:
         return None
 
@@ -569,8 +574,10 @@ class Dataset(torch.utils.data.Dataset):
                 with _pool_ctx.Pool(processes=args.core_num,
                                      initializer=_init_pool_worker) as pool:
                     results = pool.imap_unordered(_pool_load_file, file_args_list, chunksize=64)
-                    for idx, compressed in results:
+                    for idx, compressed, vn in results:
                         if compressed is not None:
+                            if vn > max_vector_num:
+                                max_vector_num = vn
                             fpath = os.path.join(ex_dir, '{:06d}.pkl.z'.format(len(self.ex_list)))
                             with open(fpath, 'wb') as f:
                                 f.write(compressed)

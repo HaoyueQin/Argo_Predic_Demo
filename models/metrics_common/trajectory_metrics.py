@@ -43,7 +43,10 @@ def compute_fde(pred, target, mask=None):
 
 def compute_min_ade(preds, target, mask=None):
     """
-    Compute Minimum Average Displacement Error (for multi-modal predictions)
+    Compute Minimum Average Displacement Error (for multi-modal predictions),
+    matching the official Argoverse 1 metric: minADE is the ADE of the
+    trajectory that has the minimum FDE (see
+    argoverse.evaluation.eval_forecasting.get_displacement_errors_and_miss_rate).
     Args:
         preds: [B, K, T, 2]
         target: [B, T, 2]
@@ -54,18 +57,22 @@ def compute_min_ade(preds, target, mask=None):
     # preds: [B, K, T, 2]
     # target: [B, 1, T, 2]
     target_expanded = target.unsqueeze(1)
-    
+
     diff = preds - target_expanded
-    dist = torch.norm(diff, p=2, dim=-1) # [B, K, T]
-    
+    dist = torch.norm(diff, p=2, dim=-1)  # [B, K, T]
+
     if mask is not None:
-        mask_expanded = mask.unsqueeze(1) # [B, 1, T]
+        mask_expanded = mask.unsqueeze(1)  # [B, 1, T]
         dist = dist * mask_expanded
-        ade_per_mode = dist.sum(dim=-1) / (mask_expanded.sum(dim=-1) + 1e-6) # [B, K]
+        ade_per_mode = dist.sum(dim=-1) / (mask_expanded.sum(dim=-1) + 1e-6)  # [B, K]
     else:
-        ade_per_mode = dist.mean(dim=-1) # [B, K]
-        
-    min_ade, _ = torch.min(ade_per_mode, dim=1) # [B]
+        ade_per_mode = dist.mean(dim=-1)  # [B, K]
+
+    fde_per_mode = dist[..., -1]  # [B, K]
+    # Official caliber: both minADE and minFDE correspond to the trajectory
+    # with the minimum FDE (not the trajectory with the minimum ADE).
+    min_idx = torch.argmin(fde_per_mode, dim=1)  # [B]
+    min_ade = ade_per_mode[torch.arange(ade_per_mode.shape[0]), min_idx]  # [B]
     return min_ade.mean().item()
 
 def compute_min_fde(preds, target, mask=None):

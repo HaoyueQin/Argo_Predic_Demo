@@ -26,13 +26,45 @@ if [ ! -d "$TRAIN" ]; then
     exit 1
 fi
 
+case "$COUNT" in
+    ''|*[!0-9]*)
+        echo "Error: count must be a non-negative integer: $COUNT" >&2
+        exit 1
+        ;;
+esac
+
+# --- Safety checks before any deletion ---
+if [ -z "$SUBSET" ] || [ "$SUBSET" = "/" ] || [ "$SUBSET" = "." ] || [ "$SUBSET" = ".." ]; then
+    echo "Error: refusing to use unsafe subset dir: $SUBSET" >&2
+    exit 1
+fi
+
+# Resolve both paths to absolute form for containment checks
+TRAIN_ABS="$(cd "$(dirname "$TRAIN")" && pwd)/$(basename "$TRAIN")"
+SUBSET_ABS="$(cd "$(dirname "$SUBSET")" 2>/dev/null && pwd)/$(basename "$SUBSET")"
+if [ "$SUBSET_ABS" = "$TRAIN_ABS" ] || [ "${TRAIN_ABS#$SUBSET_ABS/}" != "$TRAIN_ABS" ]; then
+    echo "Error: subset dir '$SUBSET' is the source dir or contains it (would delete source data)" >&2
+    exit 1
+fi
+if [ "${SUBSET_ABS#$TRAIN_ABS/}" != "$SUBSET_ABS" ]; then
+    echo "Error: subset dir '$SUBSET' is inside the source dir (rm -rf would delete it before use)" >&2
+    exit 1
+fi
+
 rm -rf "$SUBSET"
 mkdir -p "$SUBSET"
 
+# Symlink targets must be absolute: a relative target is resolved from the
+# link's own directory, so it would point at $SUBSET/train/data/... (broken).
+shopt -s nullglob
 count=0
-for f in "$TRAIN"/*.csv; do
+for f in "$TRAIN_ABS"/*.csv; do
     if [ $count -ge "$COUNT" ]; then break; fi
     ln -s "$f" "$SUBSET/$(basename "$f")"
     count=$((count + 1))
 done
-echo "Created $count symlinks in $SUBSET"
+if [ "$count" -eq 0 ]; then
+    echo "Warning: no .csv files found in $TRAIN; created no symlinks" >&2
+else
+    echo "Created $count symlinks in $SUBSET"
+fi

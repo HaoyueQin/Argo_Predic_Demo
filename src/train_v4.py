@@ -11,7 +11,8 @@ train_v4.py — DenseTNT 训练脚本 v4.0
   - LR 每 5 epoch 衰减为 30%
   - patience=5 early stopping
   - 训练历史写入 training_history.json
-  - intra-epoch checkpoint 支持崩溃恢复
+  - --resume 从 checkpoint.pt 恢复（intra-epoch checkpoint 仅作归档，
+    不参与恢复；恢复请用 --resume）
 
 用法：
   python src/train_v4.py \

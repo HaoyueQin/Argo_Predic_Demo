@@ -41,7 +41,9 @@ def ade_loss(pred, target, mask=None):
     Args:
         pred: [B, T, 2]
         target: [B, T, 2]
-        mask: [B, T] or None
+        mask: [B, T] or None — True = valid frame (NOTE: opposite convention
+            from scripts/preprocess/argo1_dataset.py's padding_mask, where
+            True = invalid/padding; do not pass that mask here unflipped)
     """
     diff = pred - target
     dist = torch.norm(diff, p=2, dim=-1)
@@ -58,7 +60,8 @@ def fde_loss(pred, target, mask=None):
     Args:
         pred: [B, T, 2]
         target: [B, T, 2]
-        mask: [B, T] or None - typically mask[:, -1]
+        mask: [B, T] or None — True = valid frame (see ade_loss note on
+            the convention difference vs. dataset padding_mask)
     """
     diff = pred[:, -1] - target[:, -1]
     dist = torch.norm(diff, p=2, dim=-1)

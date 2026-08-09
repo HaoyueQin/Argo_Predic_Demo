@@ -33,6 +33,16 @@ class TestConstantVelocityPredictor:
         with pytest.raises(ValueError):
             ConstantVelocityPredictor().fit(np.zeros((10, 3)))
 
+    def test_empty_history_raises(self):
+        # (0, 2) passes the dimension check but has no rows — must fail clearly
+        with pytest.raises(IndexError):
+            ConstantVelocityPredictor().fit(np.zeros((0, 2)))
+
+    def test_nonpositive_steps_raises(self):
+        p = ConstantVelocityPredictor().fit(np.array([[0.0, 0.0], [1.0, 2.0]]))
+        with pytest.raises(ValueError):
+            p.forecast(0)
+
 
 class TestKalmanTrajectoryPredictor:
     def test_linear_trajectory_recovery(self):

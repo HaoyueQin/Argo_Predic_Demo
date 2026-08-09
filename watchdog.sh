@@ -48,8 +48,13 @@ echo "$$" > "$PID_FILE"
 trap 'rm -f "$PID_FILE"' EXIT
 
 cleanup() {
-    # Release the DDP master port and remove intra-epoch checkpoints
-    lsof -ti :12355 2>/dev/null | xargs kill -9 2>/dev/null || true
+    # Release the DDP master port (only kill processes whose command line looks
+    # like a torch.distributed training process — never blind-kill port users)
+    lsof -ti :12355 2>/dev/null | while read -r pid; do
+        if ps -p "$pid" -o args= 2>/dev/null | grep -qE "train_v4|torch.distributed|distributed"; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
     rm -f "$OUTPUT_DIR"/model_save/checkpoint_intra_latest.pt 2>/dev/null || true
     rm -f "$OUTPUT_DIR"/model_save/checkpoint_intra_e*_s*.pt 2>/dev/null || true
     sleep 1
@@ -62,7 +67,9 @@ while [ "$retry" -lt "$MAX_RETRIES" ]; do
     cleanup
 
     set +e
-    eval "$TRAIN_CMD" 2>&1 | tee -a "$LOG_FILE"
+    # Truncate (not append) so a stale "Finish." from a previous run can never
+    # be mistaken for completion of this attempt; dashboard reads the same file.
+    eval "$TRAIN_CMD" 2>&1 | tee "$LOG_FILE"
     EXIT_CODE=${PIPESTATUS[0]}
     set -e
 

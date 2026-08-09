@@ -87,6 +87,13 @@ print("STEP 1: Data Loading")
 print("=" * 60)
 
 if not os.path.isdir(PROCESSED_DIR) or len(glob.glob(os.path.join(PROCESSED_DIR, "*.pt"))) == 0:
+    raw_csvs = glob.glob(os.path.join(DATA_DIR, "*.csv"))
+    if not raw_csvs:
+        print(f"[ERROR] No .csv files found directly under {DATA_DIR}.")
+        print("        Argoverse 1 official layout is data/raw/{train,val}/data/*.csv —")
+        print("        pass --data-dir pointing at the directory that directly contains")
+        print("        the scene CSVs (e.g. --data-dir data/raw/val/data).")
+        sys.exit(1)
     print("[INFO] Processed data not found. Running dataset.process() ...")
     ds = ArgoverseV1Dataset(REPO_ROOT, raw_dir=DATA_DIR, processed_dir=PROCESSED_DIR)
     ds.process()
@@ -95,21 +102,34 @@ if not os.path.isdir(PROCESSED_DIR) or len(glob.glob(os.path.join(PROCESSED_DIR,
 files = sorted(glob.glob(os.path.join(PROCESSED_DIR, "*.pt")))
 print(f"[INFO] Found {len(files)} processed samples")
 
-random.seed(SEED)
-random.shuffle(files)
-files = files[:MAX_FILES]
-print(f"[INFO] Using {len(files)} samples (max={MAX_FILES})")
+# Split: prefer official split subdirectories (processed_dir/train, /val) when
+# present; otherwise fall back to a random 80/20 file split and warn — a random
+# split of one pool is NOT the official split, so if the pool mixes official
+# train and val scenes, validation metrics would be optimistic (leak).
+train_dir = os.path.join(PROCESSED_DIR, "train")
+val_dir = os.path.join(PROCESSED_DIR, "val")
+train_files = sorted(glob.glob(os.path.join(train_dir, "*.pt")))
+val_files = sorted(glob.glob(os.path.join(val_dir, "*.pt")))
+if train_files and val_files:
+    train_files = train_files[:MAX_FILES]
+    print(f"[INFO] Using official split dirs: train={len(train_files)}, val={len(val_files)}")
+else:
+    random.seed(SEED)
+    random.shuffle(files)
+    files = files[:MAX_FILES]
+    print(f"[INFO] Using {len(files)} samples (max={MAX_FILES})")
+    split = int(len(files) * TRAIN_RATIO)
+    train_files = files[:split]
+    val_files = files[split:]
+    print(f"[WARN] No {PROCESSED_DIR}/{{train,val}} subdirs found — using a random 80/20 file split.")
+    print(f"       If this pool mixes official train AND val scenes, validation is leaked;")
+    print(f"       prefer processing official splits into {PROCESSED_DIR}/train and /val.")
+print(f"[INFO] Train: {len(train_files)} | Val: {len(val_files)}")
 
 def load_sample(path):
     d = torch.load(path, weights_only=False)
     idx = int(d["agent_index"]) if "agent_index" in d else 0
     return d["x"][idx], d["y"][idx], str(d["seq_id"])
-
-split = int(len(files) * TRAIN_RATIO)
-train_files = files[:split]
-val_files = files[split:]
-print(f"[INFO] Train: {len(train_files)} | Val: {len(val_files)}")
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. LSTM Training

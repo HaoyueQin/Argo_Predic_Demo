@@ -93,6 +93,8 @@ def main():
     # --- Model & dataset ---
     model = VectorNet(args).to(device)
     print('[Eval] Building validation cache...')
+    # ChunkedDataset expects data_dir as a list (see train_v4.py do_validate)
+    args.data_dir = [args_cli.data_dir]
     eval_dataset = ChunkedDataset(args, args_cli.eval_batch_size, to_screen=True)
     eval_loader = torch.utils.data.DataLoader(
         eval_dataset, batch_size=args_cli.eval_batch_size,
@@ -117,7 +119,7 @@ def main():
         epoch = model_idx - 1
         print(f'\n[Eval] Loading {model_path} ...')
         ckpt = torch.load(model_path, map_location=device, weights_only=False)
-        model.load_state_dict(ckpt, strict=False)
+        model.load_state_dict(ckpt, strict=True)
         model.eval()
 
         file2pred, file2labels = {}, {}
@@ -129,7 +131,7 @@ def main():
                 mapping = batch
                 bs = pred.shape[0]
                 for i in range(bs):
-                    fid = int(os.path.split(mapping[i]['file_name'])[1][:-4])
+                    fid = int(os.path.splitext(os.path.basename(mapping[i]['file_name']))[0])
                     file2pred[fid] = pred[i]
                     file2labels[fid] = mapping[i]['origin_labels']
 

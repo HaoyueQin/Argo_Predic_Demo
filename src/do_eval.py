@@ -58,17 +58,17 @@ def do_eval(args):
                                                   collate_fn=utils.batch_list_to_batch_tensors,
                                                   pin_memory=False)
     model = VectorNet(args)
-    print('torch.cuda.device_count', torch.cuda.device_count())
 
     logger.info("***** Recover model: %s *****", args.model_recover_path)
     if args.model_recover_path is None:
         raise ValueError("model_recover_path not specified.")
 
-    model_recover = torch.load(args.model_recover_path)
+    # map_location='cpu' so a CUDA-saved checkpoint loads on CPU-only machines
+    model_recover = torch.load(args.model_recover_path, map_location='cpu')
     model.load_state_dict(model_recover)
 
     if 'set_predict-train_recover' in args.other_params and 'complete_traj' in args.other_params:
-        model_recover = torch.load(args.other_params['set_predict-train_recover'])
+        model_recover = torch.load(args.other_params['set_predict-train_recover'], map_location='cpu')
         utils.load_model(model.decoder.complete_traj_cross_attention, model_recover, prefix='decoder.complete_traj_cross_attention.')
         utils.load_model(model.decoder.complete_traj_decoder, model_recover, prefix='decoder.complete_traj_decoder.')
 

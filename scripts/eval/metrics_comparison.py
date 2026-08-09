@@ -9,6 +9,8 @@ import numpy as np
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 methods = ["CV", "Kalman", "LSTM", "DenseTNT\n(Ours)"]
+# NOTE: 以下数值为早期实验（8k 训练子集）的展示值，仅用于生成 PPT 图表；
+# 最新结果见 README 与 outputs/eval_output/optimization_comparison.json。
 minADE = [3.50, 2.80, 1.80, 1.036]
 minFDE = [7.00, 5.50, 3.50, 1.502]
 MR     = [60.0, 45.0, 25.0, 10.9] # 修改这个地方使用其他几种模型的数据即可
