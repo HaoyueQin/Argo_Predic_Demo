@@ -1,9 +1,11 @@
 # DenseTNT Optimization 后处理验证报告
 
+> English version: [optimization-verification-report.md](optimization-verification-report.md)
+
 > 注：本报告的验证脚本 `eval_optimization.py` 已适配并加入公开仓库
 > （`scripts/eval/eval_optimization.py`），指标数据固化于
 > `outputs/eval_output/optimization_comparison.json`；复现方法：训练 →
-> `eval_all_models.py` 评估 → `python scripts/eval/eval_optimization.py`。
+> `scripts/eval/eval_all_models.py` 评估 → `python scripts/eval/eval_optimization.py`。
 > 原始全量运行日志（`baseline_full.log` / `optimization_full.log`）未随仓库发布，
 > 指标结果可直接由脚本重新生成。
 

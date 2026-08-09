@@ -2,9 +2,9 @@
 """Evaluate a single DenseTNT epoch checkpoint.
 
 Usage:
-    python eval_single.py 15                    # evaluate model.16.bin
-    python eval_single.py --model-path /path/to/model.10.bin
-    python eval_single.py 15 --data-dir sampled_val_2000/ --no-cache
+    python scripts/eval/eval_single.py 15            # evaluate model.16.bin
+    python scripts/eval/eval_single.py --model-path /path/to/model.10.bin
+    python scripts/eval/eval_single.py 15 --data-dir sampled_val_2000/ --no-cache
 
 Notes:
     - `epoch` is 0-based: epoch N corresponds to model.{N+1}.bin
@@ -22,7 +22,8 @@ import numpy as np  # noqa: F401
 import torch
 from tqdm import tqdm
 
-REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+# 仓库根：本脚本位于 <repo>/scripts/eval/，上溯三级到仓库根
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC_DIR = os.path.join(REPO_ROOT, 'src')
 sys.path.insert(0, SRC_DIR)
 

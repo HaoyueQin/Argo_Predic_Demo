@@ -18,10 +18,10 @@ velocity, LSTM) for comparison.
 ¹ CV 为量级参考的近似值（无全量实测）。
 ² Kalman / LSTM 在 300 样本子集上评估（规则/学习基线对比用）。
 ³ DenseTNT 两行在 Argoverse 1.1 全量验证集（39,472 场景）上评估。
-**不同口径的行不可直接对比**；详见 `docs/多方法对比分析报告.md` 的评估口径说明。
+**不同口径的行不可直接对比**；详见 `docs/model-comparison-report.md` 的评估口径说明。
 
 The DenseTNT model was trained on a 60k subset (16 epochs); see
-`outputs/charts/report_analysis.md` for details. Chinese version: [README-zh.md](README-zh.md).
+`docs/model-comparison-report.md` for details. Chinese version: [README-zh.md](README-zh.md).
 
 ## Repository layout
 
@@ -34,19 +34,20 @@ The DenseTNT model was trained on a 60k subset (16 epochs); see
 │   ├── dataset_argoverse.py    # Upstream dataset + Pool deadlock fix
 │   ├── do_eval.py / utils.py / structs.py / setup.py / utils_cython.pyx
 │   └── modeling/               # vectornet.py / decoder.py / lib.py
-├── eval_all_models.py          # Batch-evaluate all epoch checkpoints
-├── eval_single.py              # Evaluate a single checkpoint
+├── scripts/eval/              # eval_all_models.py / eval_single.py /
+│                               #   eval_optimization.py (reproduce the
+│                               #   goal-optimization results, baseline vs
+│                               #   optimization — see
+│                               #   docs/optimization-verification-report.md)
 ├── dashboard.py                # Training monitoring web UI (port 8080)
 ├── watchdog.sh                 # Crash-restart watchdog for training
 ├── mk50k.sh                    # Create an N-sample training subset (symlinks)
-├── scripts/eval/eval_optimization.py  # Reproduce the goal-optimization results
-│                                   #   (baseline vs optimization, see docs/
-│                                   #   OPTIMIZATION_VERIFICATION_REPORT.md)
 ├── models/                     # Own baselines: rule_based/, learning_based/,
 │                               #   loss_common/, metrics_common/
 ├── scripts/                    # Preprocessing, evaluation, visualization, demo
 ├── notebooks/                  # Jupyter demo (CV vs Kalman vs LSTM)
-├── docs/                       # Technical documentation (Chinese)
+├── docs/                       # Technical documentation (EN + 中文, see
+│                               #   docs/model-comparison-report.md etc.)
 ├── outputs/                    # Evaluation charts and reports
 └── argoverse-api/              # Argoverse API (upstream repo, full git history)
 ```
@@ -58,7 +59,7 @@ Download the **Argoverse 1** motion forecasting dataset:
 - Official: <https://www.argoverse.org/av1.html> (train ~205k scenes, val ~39k scenes);
   for the course reproduction we downloaded the dataset via the Baidu PaddlePaddle
   AI Studio mirror (multi-volume archives; verification and extraction steps are
-  documented in `docs/data_cleaning_report.md`)
+  documented in `docs/data-cleaning-report.md`)
 - HD maps are **not** shipped with this repo (the upstream Argoverse API
   `.gitignore` excludes `map_files/`). Download them from Argoverse 1
   (<https://www.argoverse.org/av1.html>) and place them under
@@ -114,7 +115,7 @@ python src/train_v4.py --do_train \
 python src/train_v4.py ... --resume
 
 # 2) Evaluate all saved checkpoints
-python eval_all_models.py
+python scripts/eval/eval_all_models.py
 
 # 3) Monitor training (optional)
 python dashboard.py

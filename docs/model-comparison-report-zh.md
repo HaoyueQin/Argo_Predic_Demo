@@ -1,5 +1,7 @@
 # 轨迹预测方法对比分析报告
 
+> English version: [model-comparison-report.md](model-comparison-report.md)
+
 > **公开仓库声明**：
 > - 本报告早期版本包含 HiVT（Zhou et al., CVPR 2022）相关实验内容（官方预训练
 >   权重与自训练对比、per_sample_metrics、bucket 分层、stepwise 误差等）。该部分

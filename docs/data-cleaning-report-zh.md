@@ -1,5 +1,7 @@
 # Argoverse v1.1 数据预处理与清洗报告
 
+> English version: [data-cleaning-report.md](data-cleaning-report.md)
+
 ## 1. 概述
 
 本报告记录 Argoverse v1.1 Motion Forecasting 数据集的完整预处理流程，包括数据校验、异常检测与修复、场景分类、坐标变换，以及最终的处理结果统计。

@@ -2,7 +2,7 @@
 """Batch-evaluate all saved DenseTNT epoch checkpoints.
 
 Usage:
-    python eval_all_models.py [--data_dir val/data] [--output_dir model_save_full_chunked]
+    python scripts/eval/eval_all_models.py [--data_dir val/data] [--output_dir model_save_full_chunked]
                               [--eval_batch_size 64] [--core_num 4] [--device cuda]
 
 Evaluates every model.{n}.bin under <output_dir>/model_save/ on the given
@@ -20,8 +20,8 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-# 仓库根：本脚本位于 <repo>/（tools 下使用时需自行调整）
-REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+# 仓库根：本脚本位于 <repo>/scripts/eval/，上溯三级到仓库根
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC_DIR = os.path.join(REPO_ROOT, 'src')
 
 sys.path.insert(0, SRC_DIR)

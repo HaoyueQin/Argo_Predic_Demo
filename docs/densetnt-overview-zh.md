@@ -1,4 +1,8 @@
-﻿## 一、方法概述
+# DenseTNT 方法概述与实验记录
+
+> English version: [densetnt-overview.md](densetnt-overview.md)
+
+## 一、方法概述
 
 ### 1.1 DenseTNT 简介
 

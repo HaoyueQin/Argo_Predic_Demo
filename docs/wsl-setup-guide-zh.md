@@ -1,5 +1,7 @@
 # DenseTNT 复现 — WSL 环境搭建与训练指南
 
+> English version: [wsl-setup-guide.md](wsl-setup-guide.md)
+
 > **目标:** 在 Windows + WSL2 + NVIDIA GPU 上复现 DenseTNT 模型  
 > **原始代码:** 仓库根 `src/`（上游 DenseTNT + 本项目改造）  
 > **预计总耗时:** 环境搭建 1-2 小时 + 训练 10-20 小时（单 GPU）
@@ -287,7 +289,7 @@ python src/train_v4.py --do_train \
 - 官方：8×2080Ti → 每个 epoch 20 分钟 → 16 epochs = 5 小时
 - 你的单 GPU（假设 RTX 3060/4060）：每个 epoch 约 40-60 分钟 → 16 epochs = **10-16 小时**
   （注：此为早期小规模实验的估算；60k 数据在 6GB 笔记本 GPU 上的实际训练时长
-  以 README 与 `DenseTNT_方法概述.md` 中最终实验记录为准）
+  以 README 与 `densetnt-overview-zh.md` 中最终实验记录为准）
 
 > 💡 建议：第一次训练先把 epoch 设小一点（`--num_train_epochs 3`），验证能跑通后再跑完整版。
 

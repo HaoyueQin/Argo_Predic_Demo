@@ -141,7 +141,7 @@ def make_args(enable_optimization=True):
     if enable_optimization:
         a.other_params['cnt_sample'] = 36  # perfect square for Cython
         # MRratio 由 utils.run_process 默认 1.0（纯 MR 目标）；此处显式设置
-        # 与历史评估配置保持一致（见 OPTIMIZATION_VERIFICATION_REPORT）。
+        # 与历史评估配置保持一致（见 docs/optimization-verification-report.md）。
         a.other_params['MRminFDE'] = 1.0
         # opti_time not set -> defaults to 10000 -> avoids Cython num_step override
     a.eval_params = []

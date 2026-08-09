@@ -9,7 +9,6 @@ import random
 import shutil
 import sys
 import time
-import pdb
 from collections import defaultdict
 from multiprocessing import Process
 from typing import Dict, List, Tuple, NamedTuple, Any, Union, Optional
@@ -618,7 +617,7 @@ def visualize_goals_2D(mapping, goals_2D, scores: np.ndarray, future_frame_num, 
         plt.ylim(-30, 100)
 
     # plt.figure(0, dpi=300)
-    cmap = plt.cm.get_cmap('Reds')
+    cmap = plt.colormaps['Reds']  # matplotlib >= 3.6; plt.cm.get_cmap removed in 3.11
     vmin = np.log(0.00001)
     scores = np.clip(scores.copy(), a_min=vmin, a_max=np.inf)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=np.max(scores)))
@@ -938,7 +937,9 @@ def select_goal_pairs_by_NMS(mapping: Dict, mapping_oppo: Dict, goals_4D: np.nda
                 break
 
     while len(pred_goal_pairs) < mode_num:
-        i = np.random.randint(0, len(pred_goal_pairs))
+        # 补位应在全部候选目标（goals_4D）中随机选，而不是在已选中的
+        # pred_goal_pairs 中选（后者会导致重复目标）。
+        i = np.random.randint(0, len(goals_4D))
         pred_goal_pairs.append(goals_4D[i].reshape((2, 2)))
         pred_probs.append(scores_4D[i])
 
@@ -1320,11 +1321,6 @@ idx_in_batch_2_ans_points = {}
 idx_in_batch_2_ans_point_scores = {}
 
 
-def run_process_todo(queue, queue_res, speed=None, eval_time=None):
-    id = np.random.randint(5)
-    print('in run_process_todo', get_time(), id)
-
-
 def run_process(queue, queue_res, args):
     id = np.random.randint(5)
     objective = 'MR'
@@ -1343,7 +1339,7 @@ def run_process(queue, queue_res, args):
 
         # MRratio 在 'MRminFDE' 时由参数指定，否则默认 1.0（纯 MR 目标）。
         # 上游只在 'MRminFDE' 分支内赋值，导致 'cnt_sample' 单独出现时
-        # MRratio 未定义（UnboundLocalError，见 OPTIMIZATION_VERIFICATION_REPORT
+        # MRratio 未定义（UnboundLocalError，见 docs/optimization-verification-report.md
         # Bug 3）；此处改为无条件初始化。
         MRratio = 1.0
         if 'MRminFDE' in args.other_params:

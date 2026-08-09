@@ -100,7 +100,9 @@ def parse_csv(filepath):
         fut[9][2] - fut[4][2],
         fut[9][1] - fut[4][1]
     ) if n_future >= 10 else 0
-    heading_change = abs(h_fut - h_hist)  # abs() already lands in [0, pi]
+    # 角度差需环绕到 [-pi, pi] 再取绝对值，结果 ∈ [0, pi]；
+    # 直接 abs(h_fut - h_hist) 在跨 ±pi 边界时会被算成接近 2*pi 的错误大角。
+    heading_change = np.abs((h_fut - h_hist + np.pi) % (2 * np.pi) - np.pi)
 
     # Other agents count
     n_others = sum(1 for k in id2info if k not in ('AGENT', 'AV'))

@@ -17,9 +17,9 @@
 ¹ CV 为量级参考的近似值（无全量实测）。
 ² 卡尔曼 / LSTM 在 300 样本子集上评估（规则/学习基线对比用）。
 ³ DenseTNT 两行在 Argoverse 1.1 全量验证集（39,472 场景）上评估。
-**不同口径的行不可直接对比**；详见 `docs/多方法对比分析报告.md` 的评估口径说明。
+**不同口径的行不可直接对比**；详见 `docs/model-comparison-report.md` 的评估口径说明。
 
-DenseTNT 模型在 60k 子集上训练 16 个 epoch；详见 `outputs/charts/report_analysis.md`。
+DenseTNT 模型在 60k 子集上训练 16 个 epoch；详见 `docs/model-comparison-report.md`。
 
 ## 仓库结构
 
@@ -31,17 +31,17 @@ DenseTNT 模型在 60k 子集上训练 16 个 epoch；详见 `outputs/charts/rep
 │   ├── dataset_argoverse.py    # 上游数据集 + Pool 防死锁改造
 │   ├── do_eval.py / utils.py / structs.py / setup.py / utils_cython.pyx
 │   └── modeling/               # vectornet.py / decoder.py / lib.py
-├── eval_all_models.py          # 批量评估所有 epoch 检查点
-├── eval_single.py              # 评估单个检查点
+├── scripts/eval/              # eval_all_models.py / eval_single.py /
+│                               #   eval_optimization.py（复现目标优化结果，
+│                               #   baseline vs optimization，见
+│                               #   docs/optimization-verification-report.md）
 ├── dashboard.py                # 训练监控 Web 界面（端口 8080）
 ├── watchdog.sh                 # 训练崩溃自动重启看门狗
 ├── mk50k.sh                    # 创建 N 条样本的训练子集（symlink）
-├── scripts/eval/eval_optimization.py  # 复现目标优化结果（baseline vs optimization，
-│                                   #   见 docs/OPTIMIZATION_VERIFICATION_REPORT.md）
 ├── models/                     # 自写基线：rule_based/、learning_based/、loss_common/、metrics_common/
 ├── scripts/                    # 预处理、评估、可视化、演示脚本
 ├── notebooks/                  # Jupyter 演示（CV vs Kalman vs LSTM）
-├── docs/                       # 技术文档
+├── docs/                       # 技术文档（中英双语，见 docs/model-comparison-report.md 等）
 ├── outputs/                    # 评估图表与报告
 └── argoverse-api/              # Argoverse API（上游仓库，含完整 git 历史）
 ```
@@ -50,7 +50,7 @@ DenseTNT 模型在 60k 子集上训练 16 个 epoch；详见 `outputs/charts/rep
 
 下载 **Argoverse 1** 运动预测数据集：
 
-- 官方地址：<https://www.argoverse.org/av1.html>（训练集约 20.5 万场景、验证集约 3.9 万场景）；本课程复现时通过百度飞桨 AI Studio 平台的数据集镜像下载（分卷压缩包，校验和解压过程见 `docs/data_cleaning_report.md`）
+- 官方地址：<https://www.argoverse.org/av1.html>（训练集约 20.5 万场景、验证集约 3.9 万场景）；本课程复现时通过百度飞桨 AI Studio 平台的数据集镜像下载（分卷压缩包，校验和解压过程见 `docs/data-cleaning-report.md`）
 - 高精地图**不随本仓库提供**（上游 argoverse-api 的 `.gitignore` 排除了 `map_files/`），需从 Argoverse 1 官网单独下载并放到
   `argoverse-api/map_files/` —— `ArgoverseMap` 加载器按仓库相对路径解析该目录（无需环境变量，见
   `argoverse-api/argoverse/map_representation/map_api.py`）
@@ -99,7 +99,7 @@ python src/train_v4.py --do_train \
 python src/train_v4.py ... --resume
 
 # 2) 批量评估所有检查点
-python eval_all_models.py
+python scripts/eval/eval_all_models.py
 
 # 3) 训练监控（可选）
 python dashboard.py

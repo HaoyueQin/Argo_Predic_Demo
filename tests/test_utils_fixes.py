@@ -4,7 +4,7 @@
 - speed_scale_factor 纯 Python 实现（上游 utils_cython.pyx 缺失，见 review）；
 - select_goals_by_NMS 在无 Cython 环境下可用（--nms_threshold 路径）；
 - run_process 在 cnt_sample 存在、MRminFDE 缺失时 MRratio 默认 1.0
-  （原 UnboundLocalError，见 OPTIMIZATION_VERIFICATION_REPORT Bug 3）；
+  （原 UnboundLocalError，见 docs/optimization-verification-report.md Bug 3）；
 - dataset_argoverse._pool_load_file 返回 (compressed, vector_num) 契约
   （供主进程跨进程聚合 max_vector_num）。
 """
