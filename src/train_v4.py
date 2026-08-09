@@ -400,7 +400,7 @@ def demo_basic(rank, world_size, kwargs, queue):
             break
 
         # LR decay: 每 5 epoch 衰减为 30%（原论文策略）
-        if i_epoch > start_epoch and i_epoch % 5 == 0:
+        if i_epoch > 0 and i_epoch % 5 == 0:
             for pg in optimizer.param_groups:
                 pg['lr'] *= LR_DECAY
             if optimizer_2 is not None:
@@ -555,7 +555,9 @@ def main():
     utils.add_argument(parser)
     parser.add_argument("--num_workers", default=0, type=int)
     parser.add_argument("--checkpoint_interval", default=100, type=int)
-    parser.add_argument("--resume_iter", default=0, type=int)
+    parser.add_argument("--resume_iter", default=0, type=int,
+                        help="Skip the first N batches of the first training epoch "
+                             "(intra-epoch resume; reset after each epoch)")
     parser.add_argument("--patience", default=5, type=int)
     args = parser.parse_args()
     utils.init(args, logger)

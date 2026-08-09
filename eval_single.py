@@ -120,7 +120,8 @@ def main():
     print('[Eval] Loading validation data...')
     # ChunkedDataset expects data_dir as a list (see train_v4.py do_validate)
     args.data_dir = [args_cli.data_dir]
-    eval_dataset = ChunkedDataset(args, args_cli.eval_batch_size, to_screen=True)
+    eval_dataset = ChunkedDataset(args, args_cli.eval_batch_size, to_screen=True,
+                                  force_rebuild=args_cli.no_cache)
     eval_loader = torch.utils.data.DataLoader(
         eval_dataset, batch_size=args_cli.eval_batch_size,
         sampler=SequentialSampler(eval_dataset),

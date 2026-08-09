@@ -147,10 +147,6 @@ def get_sub_map(args: utils.Args, x, y, city_name, vectors=[], polyline_spans=[]
         def get_hash(point):
             return round((point[0] + 500) * 100) * 1000000 + round((point[1] + 500) * 100)
 
-        lane_idx_2_polygon_idx = {}
-        for polygon_idx, lane_idx in enumerate(lane_ids):
-            lane_idx_2_polygon_idx[lane_idx] = polygon_idx
-
         # There is a lane scoring module (see Section 3.2) in the paper in order to reduce the number of goal candidates.
         # In this implementation, we use goal scoring instead of lane scoring, because we observed that it performs slightly better than lane scoring.
         # Here we only sample sparse goals, and dense goal sampling is performed after goal scoring (see decoder).
@@ -445,6 +441,11 @@ def argoverse_get_instance(lines, file_name, args):
         max_vector_num = vector_num
 
     if 'cent_x' not in mapping:
+        return None
+
+    if 'goals_2D' in mapping and len(mapping['goals_2D']) == 0:
+        # No lane/goal points near this sample (e.g. map edge): drop it instead of
+        # crashing later in the lane-scoring / goal-sampling stages.
         return None
 
     if args.do_eval:

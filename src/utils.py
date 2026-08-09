@@ -805,7 +805,7 @@ def merge_tensors(tensors: List[torch.Tensor], device, hidden_size=None) -> Tupl
     hidden_size = args.hidden_size if hidden_size is None else hidden_size
     for tensor in tensors:
         lengths.append(tensor.shape[0] if tensor is not None else 0)
-    res = torch.zeros([len(tensors), max(lengths), hidden_size], device=device)
+    res = torch.zeros([len(tensors), max(lengths) if lengths else 0, hidden_size], device=device)
     for i, tensor in enumerate(tensors):
         if tensor is not None:
             res[i][:tensor.shape[0]] = tensor

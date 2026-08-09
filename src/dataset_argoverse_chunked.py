@@ -169,10 +169,6 @@ def get_sub_map(args: utils.Args, x, y, city_name, vectors=[], polyline_spans=[]
         def get_hash(point):
             return round((point[0] + 500) * 100) * 1000000 + round((point[1] + 500) * 100)
 
-        lane_idx_2_polygon_idx = {}
-        for polygon_idx, lane_idx in enumerate(lane_ids):
-            lane_idx_2_polygon_idx[lane_idx] = polygon_idx
-
         # There is a lane scoring module (see Section 3.2) in the paper in order to reduce the number of goal candidates.
         # In this implementation, we use goal scoring instead of lane scoring, because we observed that it performs slightly better than lane scoring.
         # Here we only sample sparse goals, and dense goal sampling is performed after goal scoring (see decoder).
@@ -471,6 +467,11 @@ def argoverse_get_instance(lines, file_name, args):
     if 'cent_x' not in mapping:
         return None
 
+    if 'goals_2D' in mapping and len(mapping['goals_2D']) == 0:
+        # No lane/goal points near this sample (e.g. map edge): drop it instead of
+        # crashing later in the lane-scoring / goal-sampling stages.
+        return None
+
     if args.do_eval:
         origin_labels = np.zeros([30, 2])
         for i, line in enumerate(id2info['AGENT'][20:]):
@@ -498,7 +499,7 @@ def argoverse_get_instance(lines, file_name, args):
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, args, batch_size, to_screen=True):
+    def __init__(self, args, batch_size, to_screen=True, force_rebuild=False):
         # ==========================================================================
         # PATCHED_CHUNK v2: Disk-backed ex_list with auto-detect cache reuse.
         #
@@ -514,6 +515,7 @@ class Dataset(torch.utils.data.Dataset):
         #   - Epoch 2+: OS page cache serves most reads from RAM
         # ==========================================================================
         data_dir = args.data_dir
+        global max_vector_num
         self.ex_list = []
         self.args = args
 
@@ -522,14 +524,22 @@ class Dataset(torch.utils.data.Dataset):
         cache_loaded = False
 
         if args.reuse_temp_file:
-            # Explicit reuse: load from pickle
-            with open(ex_list_pickle_path, 'rb') as f:
-                cache_data = pickle.load(f)
-            self._load_cache(cache_data, to_screen)
-            cache_loaded = True
+            # Explicit reuse: load from pickle; fall back to rebuilding if the
+            # cache is missing or corrupt (e.g. first run of an eval script).
+            try:
+                with open(ex_list_pickle_path, 'rb') as f:
+                    cache_data = pickle.load(f)
+                self._load_cache(cache_data, to_screen)
+                cache_loaded = True
+            except Exception as e:
+                if to_screen:
+                    print(f"[Chunked v2] Cache load failed ({e}), reprocessing...")
         else:
-            # Auto-detect: if cache already exists, reuse it
-            if os.path.exists(ex_list_pickle_path) and os.path.getsize(ex_list_pickle_path) > 0:
+            # Auto-detect: if cache already exists, reuse it.
+            # force_rebuild=True skips reuse so callers (e.g. eval --no-cache)
+            # can rebuild deterministically.
+            if (not force_rebuild and os.path.exists(ex_list_pickle_path)
+                    and os.path.getsize(ex_list_pickle_path) > 0):
                 try:
                     with open(ex_list_pickle_path, 'rb') as f:
                         cache_data = pickle.load(f)
