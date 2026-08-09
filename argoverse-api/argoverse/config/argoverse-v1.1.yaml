@@ -7,8 +7,8 @@ SensorDatasetConfig:
   # all ring cameras are `landscape` aspect ratio
   camera_sensors:
     _target_: argoverse.sensor_dataset_config.SensorSuiteConfig
-
-    ring_front_center:
+    
+    ring_front_center: 
       _target_: argoverse.sensor_dataset_config.SensorConfig
       img_height: 1200
       img_width: 1920

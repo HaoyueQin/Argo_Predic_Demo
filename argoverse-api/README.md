@@ -170,7 +170,7 @@ We'll describe the 6-dof transforms in more detail below:
 
 Note that for convenience, the LiDAR point cloud sweep data is provided *directly in the ego-vehicle's coordinate frame*, rather than in either of the LiDAR sensor frames. The ego-vehicle's reference frame is placed at the center of the rear axle (see Figure 3 of our [paper](https://arxiv.org/pdf/1911.02620.pdf), with "x" pointing forward, "z" pointing up, and "y" pointing to the left).
 
-A simple example for understanding the *object labels* -- imagine the ego-vehicle is stopped at a 4-way intersection at a red light, and an object is going straight through the intersection with a green light, moving from left to right in front of us. If that labeled object is instantaneously 4 meters ahead of the egovehicle (+4 m along the x-axis), then the annotation would include the rotation to align the labeled object with the egovehicle's x-axis. Since we use the right-hand rule, we need a 90 degree rotation about the "z"-axis to align the object's x-axis with the egovehicle's x-axis. If (0,0,0) is the origin of the labeled object, to move itself into the egovehicle frame, you would need to add 4 to its x coordinate, thus adding the translation vector (4,0,0).
+A simple example for understanding the *object labels* -- imagine the ego-vehicle is stopped at a 4-way intersection at a red light, and an object is going straight through the intersection with a green light, moving from left to right in front of us. If that labeled object is instantaneously 4 meters ahead of the egovehicle (+4 m along the x-axis), then the annotation would include the rotation to align the labeled object with the egovehicle's x-axis. Since we use the right-hand rule, we need a 90 degree rotation about the "z"-axis to align the object's x-axis with the egovehicle's x-axis. If (0,0,0) is the origin of the labeled object, to move itself into the egovehicle frame, you would need to add 4 to its x coordinate, thus adding the translation vector (4,0,0). 
 
 **What about tracks in the forecasting dataset?** These are provided directly in the city reference frame (i.e. the map coordinate system).
 
@@ -178,7 +178,7 @@ A simple example for understanding the *object labels* -- imagine the ego-vehicl
 
 ## Baselines
 
-We have also released the baseline codes for both 3D tracking and motion forecasting tasks.
+We have also released the baseline codes for both 3D tracking and motion forecasting tasks. 
 3D Tracking code can be found at https://github.com/alliecc/argoverse_baselinetracker and Motion Forecasting code at https://github.com/jagjeet-singh/argoverse-forecasting
 
 ---
