@@ -1,5 +1,5 @@
 # DenseTNT training environment - core packages only
-# Install: pip install -r requirements_densetnt.txt -i https://mirrors.aliyun.com/pypi/simple/
+# Install: pip install -r requirements_densetnt.txt
 
 torch>=2.10
 torchvision>=0.25

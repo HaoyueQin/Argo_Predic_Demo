@@ -48,7 +48,10 @@ The DenseTNT model was trained on a 60k subset (16 epochs); see
 
 Download the **Argoverse 1** motion forecasting dataset:
 
-- Official: <https://www.argoverse.org/av1.html> (train ~205k scenes, val ~39k scenes)
+- Official: <https://www.argoverse.org/av1.html> (train ~205k scenes, val ~39k scenes);
+  for the course reproduction we downloaded the dataset via the Baidu PaddlePaddle
+  AI Studio mirror (multi-volume archives; verification and extraction steps are
+  documented in `docs/data_cleaning_report.md`)
 - HD maps are **not** shipped with this repo (the upstream Argoverse API
   `.gitignore` excludes `map_files/`). Download them from Argoverse 1
   (<https://www.argoverse.org/av1.html>) and place them under
@@ -70,11 +73,18 @@ HD maps go to `argoverse-api/map_files/` (see above).
 
 ```bash
 pip install -r requirements_densetnt.txt   # training env (torch, numpy, cython, ...)
-pip install -e argoverse-api/              # Argoverse API (vendored upstream, full git history)
+pip install -e argoverse-api/ --no-deps    # Argoverse API (vendored upstream, full git history);
+                                           # runtime deps are already covered above, so skip the
+                                           # upstream's pinned legacy pins (numpy==1.19, ...)
 cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
 ```
 
 Training requires a CUDA GPU (tested on 6 GB VRAM laptop GPU, WSL2 recommended).
+Note: the upstream `argoverse-api/setup.py` refuses to run on native Windows
+("Argoverse currently does not support Windows"), so use WSL2 / Linux / macOS.
+`pip install -e argoverse-api/ --no-deps` skips the upstream's pinned legacy
+dependencies (`numpy==1.19`, `hydra-core==1.1.0`, ...) — the runtime deps are
+already covered by `requirements_densetnt.txt`.
 Run the demo notebook (`notebooks/Trajectory_Prediction_Demo.ipynb`) or
 `python scripts/enhanced_demo.py --data-dir data/raw` for the baselines.
 

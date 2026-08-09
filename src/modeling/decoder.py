@@ -264,13 +264,25 @@ class Decoder(nn.Module):
             pred_goals_batch = [mapping[i]['pred_goals'] for i in range(batch_size)]
             pred_probs_batch = [mapping[i]['pred_probs'] for i in range(batch_size)]
         else:
-            pred_goals_batch, pred_probs_batch = [], []
+            # patched: fall back to top-K goal selection when optimization
+            # is disabled (matches get_scores_of_dense_goals behavior).
+            pred_goals_batch = []
+            pred_probs_batch = []
             for i in range(batch_size):
                 gs, ss = mapping[i]['goals_2D_scores']
                 top_k = min(self.mode_num, len(ss))
                 idx = np.argsort(ss)[::-1][:top_k]
-                pred_goals_batch.append(gs[idx])
-                pred_probs_batch.append(ss[idx])
+                gs_top = gs[idx]
+                ss_top = ss[idx]
+                if top_k < self.mode_num:
+                    # 候选目标不足 mode_num（罕见：地图边缘的小场景）：循环复制
+                    # 补齐到 mode_num，保证批次形状一致，避免下方 shape assert
+                    # 失败或 np.array 形状不齐报错。
+                    reps = (self.mode_num + top_k - 1) // top_k
+                    gs_top = np.tile(gs_top, (reps, 1))[:self.mode_num]
+                    ss_top = np.tile(ss_top, reps)[:self.mode_num]
+                pred_goals_batch.append(gs_top)
+                pred_probs_batch.append(ss_top)
 
         pred_goals_batch = np.array(pred_goals_batch)
         pred_probs_batch = np.array(pred_probs_batch)

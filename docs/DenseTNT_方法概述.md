@@ -2,7 +2,7 @@
 
 ### 1.1 DenseTNT 简介
 
-DenseTNT（Dense Target-driven Trajectory Prediction）是 Argoverse 轨迹预测竞赛中的 SOTA 方法之一，由美团团队提出。其核心思想是：
+DenseTNT（Dense Target-driven Trajectory Prediction）是 Argoverse 轨迹预测竞赛中的 SOTA 方法之一，由清华大学 MARS Lab 团队提出（Gu et al., ICCV 2021, "DenseTNT: End-to-end Trajectory Prediction from Dense Goal Sets"）。其核心思想是：
 
 1. **密集目标采样**：在地图上密集采样候选目标点（而非稀疏采样）
 2. **车道图编码（laneGCN）**：利用高精地图的车道拓扑结构，通过图神经网络编码车道特征

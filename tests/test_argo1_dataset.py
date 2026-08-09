@@ -142,3 +142,26 @@ class TestProcessArgoverseFunction:
 
         with pytest.raises(ValueError, match="AV trajectory shorter than 2 frames"):
             process_argoverse(str(csv_path))
+
+    def test_av_absent_in_history_raises(self, tmp_path):
+        """AV 只在未来帧出现（历史 20 帧内无 AV）时报明确错误。"""
+        csv_path = tmp_path / "45.csv"
+        rows = []
+        actors = [
+            (2, 'AGENT', (0.5, 0.5)),
+            (3, 'OTHERS', (0.0, 1.0)),
+        ]
+        for t in range(NUM_TIMESTAMPS):
+            for track_id, obj_type, step in actors:
+                x = t * step[0]
+                y = t * step[1]
+                rows.append(f"{track_id},{t},{obj_type},{x:.6f},{y:.6f},PIT")
+        # AV 仅在 t=40..49（未来帧）出现
+        for t in range(40, NUM_TIMESTAMPS):
+            rows.append(f"1,{t},AV,{float(t):.6f},0.000000,PIT")
+        with open(csv_path, 'w') as f:
+            f.write("TRACK_ID,TIMESTAMP,OBJECT_TYPE,X,Y,CITY_NAME\n")
+            f.write("\n".join(rows))
+
+        with pytest.raises(ValueError, match="no AV in the historical frames"):
+            process_argoverse(str(csv_path))

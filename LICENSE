@@ -30,4 +30,4 @@ Third-party components in this repository retain their own licenses:
   described in the README.
 - `argoverse-api/` is the
   [argoai/argoverse-api](https://github.com/argoai/argoverse-api) repository
-  (MIT License), merged via `git subtree` with its full commit history.
+  (MIT License), merged with its full commit history preserved (authorship intact).

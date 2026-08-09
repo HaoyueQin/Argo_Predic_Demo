@@ -74,6 +74,12 @@ def process_argoverse(raw_path: str,) -> Dict:
     num_nodes = len(actor_ids)
 
     av_series = df[df['OBJECT_TYPE'] == 'AV']
+    if av_series.empty:
+        # AV 不在历史帧中（或整条 CSV 缺失 AV）——无法计算场景原点/朝向。
+        # df 已按历史帧 actor 过滤，此处为空即历史 20 帧内无 AV。
+        raise ValueError(
+            f"{raw_path}: no AV in the historical frames — cannot compute scene origin/heading"
+        )
     av_hist_len = len(av_series)
     if av_hist_len < 2:
         raise ValueError(

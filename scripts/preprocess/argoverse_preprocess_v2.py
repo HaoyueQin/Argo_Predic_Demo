@@ -141,14 +141,13 @@ def process_one(args):
         if len(agent_xy) < MIN_HISTORY_LEN:
             return ("skip_short", scene_id)
 
-        # ── Step 6: 补齐到 50 帧 ──
-        # 如果轨迹不足 50 帧，用最后一帧的坐标补齐。注意：这样会人为制造
-        # "静止未来"（短轨迹被当作车辆停在原地），模型会被训练成倾向预测
-        # 静止、验证指标被稀释；如不希望该行为，应改为丢弃短轨迹。
+        # ── Step 6: 轨迹完整性 ──
+        # AGENT 轨迹不足 50 帧（历史 ≥20 帧但未来被截断）时直接跳过：补齐会
+        # 人为制造"静止未来"（短轨迹被当作停车），且 DenseTNT 训练端要求
+        # AGENT 恰好 50 行（dataset 内 assert len(AGENT)==50），补齐的 CSV
+        # 同样会被丢弃；旧实现以补齐后的长度遍历原始时间戳会越界崩溃。
         if len(agent_xy) < TOTAL_FRAMES:
-            pad = TOTAL_FRAMES - len(agent_xy)
-            agent_xy = np.vstack([agent_xy, np.tile(agent_xy[-1], (pad, 1))])
-            agent_ts = np.pad(agent_ts, (0, pad), mode='edge')
+            return ("skip_short", scene_id)
 
         # 切分历史帧和未来帧
         hist_xy = agent_xy[:HISTORY_FRAMES].copy()      # 帧 0-19

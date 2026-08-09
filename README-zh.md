@@ -44,7 +44,7 @@
 
 下载 **Argoverse 1** 运动预测数据集：
 
-- 官方地址：<https://www.argoverse.org/av1.html>（训练集约 20.5 万场景、验证集约 3.9 万场景）
+- 官方地址：<https://www.argoverse.org/av1.html>（训练集约 20.5 万场景、验证集约 3.9 万场景）；本课程复现时通过百度飞桨 AI Studio 平台的数据集镜像下载（分卷压缩包，校验和解压过程见 `docs/data_cleaning_report.md`）
 - 高精地图**不随本仓库提供**（上游 argoverse-api 的 `.gitignore` 排除了 `map_files/`），需从 Argoverse 1 官网单独下载并放到
   `argoverse-api/map_files/` —— `ArgoverseMap` 加载器按仓库相对路径解析该目录（无需环境变量，见
   `argoverse-api/argoverse/map_representation/map_api.py`）
@@ -63,11 +63,15 @@ data/raw/
 
 ```bash
 pip install -r requirements_densetnt.txt   # 训练环境（torch、numpy、cython 等）
-pip install -e argoverse-api/              # Argoverse API（仓库自带上游代码，含完整 git 历史）
+pip install -e argoverse-api/ --no-deps    # Argoverse API（仓库自带上游代码，含完整 git 历史）；
+                                           # 运行时依赖已由上行覆盖，--no-deps 跳过上游钉死的
+                                           # 旧版本依赖（numpy==1.19 等，Python 3.10+ 无法安装）
 cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
 ```
 
 训练需要 CUDA GPU（在 6GB 显存笔记本 GPU + WSL2 上验证通过）。
+注意：上游 `argoverse-api/setup.py` 在原生 Windows 上会主动拒绝安装
+（"Argoverse currently does not support Windows"），请使用 WSL2 / Linux / macOS。
 基线模型演示可运行 `notebooks/Trajectory_Prediction_Demo.ipynb`，或
 `python scripts/enhanced_demo.py --data-dir data/raw`。
 

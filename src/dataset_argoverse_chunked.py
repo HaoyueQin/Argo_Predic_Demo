@@ -14,7 +14,7 @@
 #   - Persist max_vector_num alongside ex_list for accurate logging.
 #   - Backward-compatible pickle format (dict with 'ex_list' + 'max_vector_num').
 #
-# Original dataset_argoverse.py preserved as dataset_argoverse.py.bak.
+# Original dataset_argoverse.py kept as-is; this chunked variant adds disk-backed caching.
 # ==============================================================================
 
 import copy
@@ -498,6 +498,32 @@ def argoverse_get_instance(lines, file_name, args):
     return preprocess(args, id2info, mapping)
 
 
+def _collect_csv_files(data_dir):
+    """收集 data_dir（list[str]）顶层下的全部 csv 文件路径并排序。"""
+    files = []
+    for each_dir in data_dir:
+        root, dirs, cur_files = os.walk(each_dir).__next__()
+        files.extend([os.path.join(each_dir, file) for file in cur_files if
+                      file.endswith("csv") and not file.startswith('.')])
+    return sorted(files)
+
+
+def _data_signature(files):
+    """数据指纹：文件总数与首尾文件名，用于缓存复用校验。
+
+    文件数相同但内容不同（同目录换数据集）时首尾文件名大概率变化；
+    如需更强校验可扩展为完整文件清单哈希。
+    """
+    return (len(files), files[0] if files else None, files[-1] if files else None)
+
+
+def _cache_matches(cache_data, current_sig):
+    """缓存与当前数据签名一致才可复用；旧格式缓存（无签名）视为不匹配。"""
+    if not isinstance(cache_data, dict) or 'data_signature' not in cache_data:
+        return False
+    return cache_data['data_signature'] == current_sig
+
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, args, batch_size, to_screen=True, force_rebuild=False):
         # ==========================================================================
@@ -520,22 +546,36 @@ class Dataset(torch.utils.data.Dataset):
         self.args = args
 
         # ===== Determine whether to load from cache or process from scratch =====
-        ex_list_pickle_path = os.path.join(args.temp_file_dir, get_name('ex_list'))
+        # 缓存文件名固定（不带 get_name 的 'eval.'/'debug.' 前缀）：训练缓存与
+        # 验证缓存已按目录隔离（temp_file vs get_eval_temp_dir），固定名保证
+        # train_v4 / eval_all_models / eval_single 共用同一份验证缓存；get_name
+        # 的 'eval.' 前缀依赖全局 utils.args.do_eval 状态，会导致 eval 脚本
+        # 各自重建一份（见 review）。
+        ex_list_pickle_path = os.path.join(args.temp_file_dir, 'ex_list')
         cache_loaded = False
 
-        if args.reuse_temp_file:
+        # 当前数据文件清单与签名：加载分支用于校验缓存是否仍匹配，
+        # 重建分支直接复用该清单处理文件。
+        files = _collect_csv_files(data_dir)
+        current_sig = _data_signature(files)
+
+        if args.reuse_temp_file and not force_rebuild:
             # Explicit reuse: load from pickle; fall back to rebuilding if the
-            # cache is missing or corrupt (e.g. first run of an eval script).
+            # cache is missing, corrupt, or the dataset changed (e.g. first run
+            # of an eval script, or --no-cache which forces a rebuild).
             try:
                 with open(ex_list_pickle_path, 'rb') as f:
                     cache_data = pickle.load(f)
-                self._load_cache(cache_data, to_screen)
-                cache_loaded = True
+                if _cache_matches(cache_data, current_sig):
+                    self._load_cache(cache_data, to_screen)
+                    cache_loaded = True
+                elif to_screen:
+                    print(f"[Chunked v2] Cache data mismatch (dataset changed), reprocessing...")
             except Exception as e:
                 if to_screen:
                     print(f"[Chunked v2] Cache load failed ({e}), reprocessing...")
         else:
-            # Auto-detect: if cache already exists, reuse it.
+            # Auto-detect: if cache already exists and matches, reuse it.
             # force_rebuild=True skips reuse so callers (e.g. eval --no-cache)
             # can rebuild deterministically.
             if (not force_rebuild and os.path.exists(ex_list_pickle_path)
@@ -543,7 +583,10 @@ class Dataset(torch.utils.data.Dataset):
                 try:
                     with open(ex_list_pickle_path, 'rb') as f:
                         cache_data = pickle.load(f)
-                    if isinstance(cache_data, dict) and 'ex_list' in cache_data:
+                    if not _cache_matches(cache_data, current_sig):
+                        if to_screen:
+                            print(f"[Chunked v2] Cache data mismatch (dataset changed), reprocessing...")
+                    elif isinstance(cache_data, dict) and 'ex_list' in cache_data:
                         self.ex_list = cache_data['ex_list']
                     else:
                         # Backward compatibility: old format (plain list)
@@ -563,11 +606,6 @@ class Dataset(torch.utils.data.Dataset):
             global am
             am = ArgoverseMap()
             if args.core_num >= 1:
-                files = []
-                for each_dir in data_dir:
-                    root, dirs, cur_files = os.walk(each_dir).__next__()
-                    files.extend([os.path.join(each_dir, file) for file in cur_files if
-                                  file.endswith("csv") and not file.startswith('.')])
                 if to_screen:
                     print(f"[Chunked v2] Processing {len(files)} files with {args.core_num} workers...")
                     print(files[:5], files[-5:])
@@ -601,8 +639,10 @@ class Dataset(torch.utils.data.Dataset):
             else:
                 assert False
 
-            # Save as dict for future runs (includes max_vector_num)
-            cache_data = {'ex_list': self.ex_list, 'max_vector_num': max_vector_num}
+            # Save as dict for future runs (includes max_vector_num and the
+            # dataset signature used to detect stale caches on later runs)
+            cache_data = {'ex_list': self.ex_list, 'max_vector_num': max_vector_num,
+                          'data_signature': current_sig}
             with open(ex_list_pickle_path, 'wb') as f:
                 pickle.dump(cache_data, f)
             if to_screen:
