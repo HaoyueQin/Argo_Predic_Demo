@@ -88,10 +88,17 @@ def get_displacement_errors_and_miss_rate(
     min_fde, prob_min_fde, brier_min_fde = [], [], []
     n_misses, prob_n_misses = [], []
     for k, v in gt_trajectories.items():
+        if k not in forecasted_trajectories or len(forecasted_trajectories[k]) == 0:
+            # No forecast for this ground-truth sequence: skip it instead of
+            # raising KeyError/IndexError on missing or empty predictions.
+            continue
         curr_min_ade = float("inf")
         curr_min_fde = float("inf")
         min_idx = 0
         max_num_traj = min(max_guesses, len(forecasted_trajectories[k]))
+        if max_num_traj == 0:
+            # Nothing usable to evaluate for this sequence (e.g. max_guesses=0).
+            continue
 
         # If probabilities available, use the most likely trajectories, else use the first few
         if forecasted_probabilities is not None:
@@ -100,7 +107,13 @@ def get_displacement_errors_and_miss_rate(
             pruned_probabilities = [forecasted_probabilities[k][t] for t in sorted_idx[:max_num_traj]]
             # Normalize
             prob_sum = sum(pruned_probabilities)
-            pruned_probabilities = [p / prob_sum for p in pruned_probabilities]
+            if prob_sum > 0:
+                pruned_probabilities = [p / prob_sum for p in pruned_probabilities]
+            else:
+                # All-zero probabilities: fall back to a uniform distribution so
+                # evaluation does not crash on degenerate model outputs.
+                n = len(pruned_probabilities)
+                pruned_probabilities = [1.0 / n] * n if n > 0 else []
         else:
             sorted_idx = np.arange(len(forecasted_trajectories[k]))
         pruned_trajectories = [forecasted_trajectories[k][t] for t in sorted_idx[:max_num_traj]]
@@ -176,9 +189,10 @@ def get_drivable_area_compliance(
             if np.sum(raster_layer) == raster_layer.shape[0]:
                 num_dac_trajectories += 1
 
-        dac_score.append(num_dac_trajectories / n_guesses)
+        if n_guesses > 0:
+            dac_score.append(num_dac_trajectories / n_guesses)
 
-    return sum(dac_score) / len(dac_score)
+    return sum(dac_score) / len(dac_score) if dac_score else 0.0
 
 
 def compute_forecasting_metrics(

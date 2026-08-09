@@ -182,15 +182,10 @@ def get_polygon_from_points(points: np.ndarray) -> Polygon:
     points = points
     hull = ConvexHull(points)
 
-    poly = []
-
-    for simplex in hull.simplices:
-        poly.append([points[simplex, 0][0], points[simplex, 1][0], points[simplex, 2][0]])
-        poly.append([points[simplex, 0][1], points[simplex, 1][1], points[simplex, 2][1]])
-
-        # plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
-
-    return Polygon(poly)
+    # The convex hull boundary (ordered vertices) is the correct polygon; the
+    # previous per-simplex (x, y, z) stacking produced geometrically meaningless
+    # vertex triples.
+    return Polygon(points[hull.vertices, :2])
 
 
 def get_rotated_bbox_from_points(points: np.ndarray) -> Polygon:
@@ -209,6 +204,10 @@ def get_rotated_bbox_from_points(points: np.ndarray) -> Polygon:
 def unit_vector(pt0: Tuple[float, float], pt1: Tuple[float, float]) -> Tuple[float, float]:
     # returns an unit vector that points in the direction of pt0 to pt1
     dis_0_to_1 = math.sqrt((pt0[0] - pt1[0]) ** 2 + (pt0[1] - pt1[1]) ** 2)
+    if dis_0_to_1 == 0:
+        # Degenerate segment (identical points): return an arbitrary unit vector
+        # instead of dividing by zero.
+        return 1.0, 0.0
     return (pt1[0] - pt0[0]) / dis_0_to_1, (pt1[1] - pt0[1]) / dis_0_to_1
 
 

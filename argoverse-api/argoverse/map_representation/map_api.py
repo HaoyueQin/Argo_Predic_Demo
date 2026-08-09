@@ -400,8 +400,8 @@ class ArgoverseMap:
         npyimage_coords = npyimage_coords.astype(np.int64)
 
         ground_height_values = np.full((npyimage_coords.shape[0]), np.nan)
-        ind_valid_pts = (npyimage_coords[:, 1] < ground_height_mat.shape[0]) * (
-            npyimage_coords[:, 0] < ground_height_mat.shape[1]
+        ind_valid_pts = (npyimage_coords[:, 1] >= 0) * (npyimage_coords[:, 1] < ground_height_mat.shape[0]) * (
+            npyimage_coords[:, 0] >= 0) * (npyimage_coords[:, 0] < ground_height_mat.shape[1]
         )
 
         ground_height_values[ind_valid_pts] = ground_height_mat[
@@ -955,6 +955,10 @@ class ArgoverseMap:
                 for child in child_lanes:
                     centerline = self.get_lane_segment_centerline(child, city_name)
                     cl_length = LineString(centerline).length
+                    if np.isnan(cl_length):
+                        # A NaN-length centerline (out-of-bounds map point) must not
+                        # poison the distance accumulation or disable threshold pruning.
+                        cl_length = 0.0
                     curr_lane_ids = self.dfs(
                         child,
                         city_name,
