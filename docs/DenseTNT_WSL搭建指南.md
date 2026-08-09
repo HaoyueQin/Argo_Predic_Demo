@@ -263,6 +263,7 @@ python src/train_v4.py --do_train \
   --output_dir model_save_full_chunked \
   --hidden_size 128 --train_batch_size 64 --use_map \
   --core_num 4 --num_workers 0 --use_centerline --distributed_training ${GPU_NUM} \
+  --future_frame_num 30 \
   --num_train_epochs 16 --patience 5 \
   --other_params \
     semantic_lane direction l1_loss \

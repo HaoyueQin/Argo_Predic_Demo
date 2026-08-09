@@ -158,6 +158,8 @@ def process_one(args):
 
         # ── Step 7: 异常检测与修复 ──
         # 检测连续帧之间的速度异常和位移跳跃
+        # 注意：修复仅应用于 AGENT（预测目标）轨迹；AV 与 OTHERS 保留原始
+        # 坐标（清洗范围限定为预测目标，不修改场景中其他参与者的原始数据）。
         anomalies = {"speed": 0, "jump": 0}
         for xy_set, ts_set in [(hist_xy, hist_ts), (gt_xy, agent_ts[HISTORY_FRAMES:TOTAL_FRAMES])]:
             if len(xy_set) < 2:

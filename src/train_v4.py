@@ -548,9 +548,12 @@ def run(args):
     build_validation_cache(args)
     # 训练缓存同样在主进程预构建，避免多 rank 并发重建（见 S4）
     build_train_cache(args)
-    # DataLoader 每 rank 批大小 = train_batch_size // world_size，必须 ≥ 1
+    # DataLoader 每 rank 批大小 = train_batch_size // world_size，必须 ≥ 1 且整除，
+    # 否则各 rank 批次大小不均（review S5）
     assert args.train_batch_size >= args.distributed_training, \
         f'train_batch_size ({args.train_batch_size}) must be >= distributed_training ({args.distributed_training})'
+    assert args.train_batch_size % args.distributed_training == 0, \
+        f'train_batch_size ({args.train_batch_size}) must be divisible by distributed_training ({args.distributed_training})'
     ctx = mp.get_context('spawn')
     stop_flag = ctx.Value('i', 0)
 

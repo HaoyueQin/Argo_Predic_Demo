@@ -271,7 +271,7 @@ def init(args_: Args, logger_):
 
     if not args.do_eval and not args.debug and os.path.exists(args.output_dir):
         print('{} {} exists'.format(get_color_text('Warning!'), args.output_dir))
-        pass  # input() disabled
+        # 上游此处 input() 暂停确认；公开版直接继续（可覆盖 output_dir）
 
     if args.do_eval:
         assert os.path.exists(args.output_dir)
@@ -709,9 +709,6 @@ def visualize_goals_2D(mapping, goals_2D, scores: np.ndarray, future_frame_num, 
     plt.close()
     global visualize_num
     visualize_num += 1
-    if visualize_num > 200 and 'vis_video' not in args.other_params and 'vis_all' not in args.other_params:
-        print('press any key to continue')
-        pass  # input() disabled
 
 
 def load_model(model, state_dict, prefix=''):
@@ -1103,7 +1100,6 @@ def get_FDE(points: np.ndarray, scores: np.ndarray, mapping, gt_goal=None, metho
                 for each in predict:
                     FDE = min(FDE, get_dis_point2point(each, gt_goal))
             method2FDEs[method].append(FDE)
-            pass
         else:
             assert False
 
@@ -1314,7 +1310,6 @@ def run_process_todo(queue, queue_res, speed=None, eval_time=None):
 
 def run_process(queue, queue_res, args):
     id = np.random.randint(5)
-    utils_cython.args = args
     objective = 'MR'
     if 'MRminFDE' in args.other_params:
         objective = 'MRminFDE'

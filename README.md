@@ -93,7 +93,7 @@ Note: the upstream `argoverse-api/setup.py` refuses to run on native Windows
 dependencies (`numpy==1.19`, `hydra-core==1.1.0`, ...) — the runtime deps are
 already covered by `requirements_densetnt.txt`.
 Run the demo notebook (`notebooks/Trajectory_Prediction_Demo.ipynb`) or
-`python scripts/enhanced_demo.py --data-dir data/raw` for the baselines.
+`python scripts/enhanced_demo.py --data-dir data/raw/val/data` for the baselines.
 
 ## Train & evaluate DenseTNT
 
@@ -104,6 +104,7 @@ python src/train_v4.py --do_train \
   --output_dir model_save_full_chunked \
   --train_batch_size 64 --num_train_epochs 16 --patience 5 \
   --hidden_size 128 --core_num 4 --num_workers 0 \
+  --future_frame_num 30 \
   --distributed_training 1 --use_map --use_centerline --argoverse \
   --other_params semantic_lane direction l1_loss goals_2D \
     enhance_global_graph subdivide goal_scoring laneGCN \

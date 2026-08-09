@@ -27,10 +27,17 @@ If you move this project to another computer, you will need to reconfigure the P
         ```
 
 4.  **安装依赖 / Install dependencies**
-    *   使用 `requirements.txt` 文件一键安装所有依赖：
-    *   Install all dependencies using the generated `requirements.txt`:
+    *   使用 `requirements.txt` 文件一键安装**演示环境**（LSTM/Kalman/CV 基线与 Notebook）依赖：
+    *   Install the **demo environment** dependencies (baselines + notebooks) using `requirements.txt`:
     ```bash
     pip install -r requirements.txt
+    ```
+    *   **DenseTNT 训练环境**请按根目录 README 的说明单独安装：
+    *   For the **DenseTNT training environment**, follow the root README instead:
+    ```bash
+    pip install -r requirements_densetnt.txt
+    pip install -e argoverse-api/ --no-deps
+    cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
     ```
 
 5.  **注册 Jupyter Kernel / Register Jupyter Kernel**

@@ -318,8 +318,9 @@ def preprocess(args, id2info, mapping):
 
     assert_(len(mapping['agents']) == len(polyline_spans))
 
-    assert len(vectors) <= max_vector_num
-
+    # max_vector_num 仅用于日志统计（merge_tensors 按 batch 动态取长度，不依赖它）；
+    # 上游此处断言"本文件向量数 <= 历史最大 vector_num"在车道向量多的场景会误崩，
+    # 且在 Pool worker 进程内（全局从 0 起步）风险更高，故删除（见 review）。
     t = len(vectors)
     mapping['map_start_polyline_idx'] = len(polyline_spans)
     if args.use_map:

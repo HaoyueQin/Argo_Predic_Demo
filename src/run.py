@@ -267,8 +267,7 @@ def demo_basic(rank, world_size, kwargs, queue):
         train_dataset = Dataset(args, args.train_batch_size, to_screen=False)
 
         train_sampler = DistributedSampler(train_dataset, shuffle=args.do_train)
-        # patched: allow variable batch size
-        pass  # patched: batch_size % world_size check removed
+        # patched: allow variable batch size (upstream asserted divisibility)
         train_dataloader = torch.utils.data.DataLoader(
             train_dataset, sampler=train_sampler,
             batch_size=args.train_batch_size // world_size,

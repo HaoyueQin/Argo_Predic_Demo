@@ -146,7 +146,7 @@ def poll_all(state, log_path, hist_path, wd_path):
                     # "Finish." only counts if the log was written recently — a
                     # stale log from an earlier run must not show as "done"
                     fresh = (time.time() - os.path.getmtime(log_path)) < 600
-                    log["dn"] = "Finish." in txt and "TRAINING_ALL_DONE" not in txt and fresh
+                    log["dn"] = "Finish." in txt and fresh
                     lines = txt.strip().split("\n")
                     log["ac"] = bool(re.findall(r"\d+%\|", lines[-1])) if lines else False
                     log["tl"] = [l.strip()[:130] for l in lines[-12:] if l.strip()]
