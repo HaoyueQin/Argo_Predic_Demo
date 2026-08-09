@@ -136,12 +136,18 @@ python -m pytest tests/ -v
 
 ## Acknowledgements
 
-- **DenseTNT** code: [Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT),
-  MIT License (Copyright (c) 2024 Tsinghua MARS Lab). This repo keeps the
-  upstream commit history and applies the modifications described above.
+- **DenseTNT** code: [Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT)
+  (J. Gu, C. Sun, H. Zhao, ICCV 2021). The upstream repository does not ship a
+  LICENSE file; please contact the upstream authors for any licensing
+  questions. This repo keeps the upstream commit history and applies the
+  modifications described above.
 - **Argoverse API**: [argoai/argoverse-api](https://github.com/argoai/argoverse-api),
-  MIT License, merged into `argoverse-api/` with its full commit history
-  preserved (authorship intact).
+  released by Argo AI under the MIT License (Apache-2.0 retained on
+  `vis_mask.py`, `colormap.py`, `cuboid_interior.py`), merged into
+  `argoverse-api/` with its full commit history preserved (authorship intact).
+  Three files carry local robustness fixes only (`competition_util.py`,
+  `eval_forecasting.py`, `map_api.py` — zero-division / negative-index /
+  missing-forecast guards); all other vendored files are pristine upstream.
 - **Paper**: J. Gu, C. Sun, H. Zhao, "DenseTNT: End-to-end Trajectory Prediction
   from Dense Goal Sets", ICCV 2021. <https://arxiv.org/abs/2108.09640>
 

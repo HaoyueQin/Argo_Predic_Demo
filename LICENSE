@@ -25,9 +25,13 @@ SOFTWARE.
 Third-party components in this repository retain their own licenses:
 
 - `src/` (DenseTNT training code) is based on
-  [Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT)
-  (MIT License, Copyright (c) 2024 Tsinghua MARS Lab), with modifications
-  described in the README.
+  [Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT),
+  with modifications described in the README. The upstream repository does not
+  ship a LICENSE file; please contact the upstream authors for any licensing
+  questions.
 - `argoverse-api/` is the
   [argoai/argoverse-api](https://github.com/argoai/argoverse-api) repository
-  (MIT License), merged with its full commit history preserved (authorship intact).
+  (MIT License; Apache-2.0 retained on `vis_mask.py`, `colormap.py`,
+  `cuboid_interior.py`), merged with its full commit history preserved
+  (authorship intact). Three files carry local robustness fixes only; see the
+  README for details.
