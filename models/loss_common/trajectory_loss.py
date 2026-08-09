@@ -21,12 +21,12 @@ class WeightedSmoothL1Loss(nn.Module):
         loss = F.smooth_l1_loss(pred, target, reduction='none', beta=self.beta)
         # Sum over coordinates
         loss = loss.sum(dim=-1)
-        
+
         if weights is not None:
             if weights.dim() == 1:
                 weights = weights.unsqueeze(-1)
             loss = loss * weights
-            
+
         if self.reduction == 'mean':
             if weights is not None:
                 return loss.sum() / (weights.sum() + 1e-6)
@@ -47,11 +47,11 @@ def ade_loss(pred, target, mask=None):
     """
     diff = pred - target
     dist = torch.norm(diff, p=2, dim=-1)
-    
+
     if mask is not None:
         dist = dist * mask
         return dist.sum() / (mask.sum() + 1e-6)
-    
+
     return dist.mean()
 
 def fde_loss(pred, target, mask=None):
@@ -65,13 +65,12 @@ def fde_loss(pred, target, mask=None):
     """
     diff = pred[:, -1] - target[:, -1]
     dist = torch.norm(diff, p=2, dim=-1)
-    
+
     if mask is not None:
         # If mask is full sequence [B, T], take last step
         if mask.dim() == 2 and mask.shape[1] == pred.shape[1]:
             mask = mask[:, -1]
         dist = dist * mask
         return dist.sum() / (mask.sum() + 1e-6)
-        
-    return dist.mean()
 
+    return dist.mean()

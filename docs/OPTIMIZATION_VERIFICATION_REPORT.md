@@ -96,7 +96,7 @@ Cython 函数 `get_value`（`utils_cython.pyx:138`）计算给定 6 个候选终
   3. 如果最小距离 <= 2.0m，视为"命中"（miss_error=0）
   4. 否则 miss_error=10.0m
   5. 加权: minFDE * (1-MRratio) + miss_error * MRratio
-  
+
 总期望值 = Σ score_i * 亚格点平均损失
 ```
 

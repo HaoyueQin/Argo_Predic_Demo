@@ -13,11 +13,11 @@ def compute_ade(pred, target, mask=None):
     """
     diff = pred - target
     dist = torch.norm(diff, p=2, dim=-1)
-    
+
     if mask is not None:
         dist = dist * mask
         return (dist.sum() / (mask.sum() + 1e-6)).item()
-    
+
     return dist.mean().item()
 
 def compute_fde(pred, target, mask=None):
@@ -32,13 +32,13 @@ def compute_fde(pred, target, mask=None):
     """
     diff = pred[:, -1] - target[:, -1]
     dist = torch.norm(diff, p=2, dim=-1)
-    
+
     if mask is not None:
         if mask.dim() == 2:
             mask = mask[:, -1]
         dist = dist * mask
         return (dist.sum() / (mask.sum() + 1e-6)).item()
-        
+
     return dist.mean().item()
 
 def compute_min_ade(preds, target, mask=None):
@@ -89,12 +89,12 @@ def compute_min_fde(preds, target, mask=None):
     preds_last = preds[:, :, -1, :] # [B, K, 2]
     target_last = target[:, -1, :] # [B, 2]
     target_last_expanded = target_last.unsqueeze(1) # [B, 1, 2]
-    
+
     diff = preds_last - target_last_expanded
     dist = torch.norm(diff, p=2, dim=-1) # [B, K]
-    
+
     min_fde, _ = torch.min(dist, dim=1) # [B]
-    
+
     if mask is not None:
         if mask.dim() == 2:
             mask_last = mask[:, -1] # [B]
@@ -102,7 +102,7 @@ def compute_min_fde(preds, target, mask=None):
             mask_last = mask
         min_fde = min_fde * mask_last
         return (min_fde.sum() / (mask_last.sum() + 1e-6)).item()
-        
+
     return min_fde.mean().item()
 
 def compute_miss_rate(preds, target, mask=None, threshold=2.0):
@@ -120,14 +120,14 @@ def compute_miss_rate(preds, target, mask=None, threshold=2.0):
     preds_last = preds[:, :, -1, :] # [B, K, 2]
     target_last = target[:, -1, :] # [B, 2]
     target_last_expanded = target_last.unsqueeze(1)
-    
+
     diff = preds_last - target_last_expanded
     dist = torch.norm(diff, p=2, dim=-1) # [B, K]
-    
+
     min_dist, _ = torch.min(dist, dim=1) # [B]
-    
+
     miss = (min_dist > threshold).float()
-    
+
     if mask is not None:
         if mask.dim() == 2:
             mask_last = mask[:, -1]
@@ -135,5 +135,5 @@ def compute_miss_rate(preds, target, mask=None, threshold=2.0):
             mask_last = mask
         miss = miss * mask_last
         return (miss.sum() / (mask_last.sum() + 1e-6)).item()
-        
+
     return miss.mean().item()

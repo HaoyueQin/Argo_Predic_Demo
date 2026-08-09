@@ -52,7 +52,7 @@ Evaluation:
 Results:
 
     The results are represented as a (C + 1, P) table, where C + 1 represents the number of evaluation classes
-    in addition to the mean statistics average across all classes, and P refers to the number of included statistics, 
+    in addition to the mean statistics average across all classes, and P refers to the number of included statistics,
     e.g. AP, ATE, ASE, AOE, CDS by default.
 
     Note: The `evaluate` function will use all available logical cores on the machine.

@@ -39,10 +39,9 @@ If you move this project to another computer, you will need to reconfigure the P
     ```bash
     python -m ipykernel install --user --name=argo_env --display-name "Python (Argo Project)"
     ```
-   
+
     ## 完成以上步骤后，就可以运行项目了！
 
 6.  **运行项目 / Run the Project**
     *   确保你在 Jupyter Notebook 中选择了 `venv_argo` 内核。
     *   Run the project in Jupyter Notebook with the `venv_argo` kernel.
-

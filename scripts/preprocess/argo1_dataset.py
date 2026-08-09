@@ -136,4 +136,3 @@ def process_argoverse(raw_path: str,) -> Dict:
         'origin': origin.unsqueeze(0),
         'theta': theta,
     }
-

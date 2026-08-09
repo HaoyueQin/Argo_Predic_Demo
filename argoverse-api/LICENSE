@@ -1,6 +1,6 @@
-The majority of our code is released under the MIT license below. We retain 
+The majority of our code is released under the MIT license below. We retain
 the Apache 2.0 license on certain files that we include or modify from other
-open source projects: vis_mask.py, colormap.py, and cuboid_interior.py. The 
+open source projects: vis_mask.py, colormap.py, and cuboid_interior.py. The
 full text of the Apache 2.0 license is below.
 
 The MIT License

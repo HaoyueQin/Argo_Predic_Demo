@@ -5,10 +5,10 @@ on: [pull_request]
 
 jobs:
   run-unit-tests:
-    
+
     name: Run all unit tests in codebase
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.7
@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install tox==3.12.1 pre-commit==1.17.0
-        
+
     - name: Download Argoverse HD map files
       run: |
         wget https://s3.amazonaws.com/argoai-argoverse/hd_maps.tar.gz
@@ -29,4 +29,4 @@ jobs:
       run: |
         tox
         pre-commit run --all-files
-        
+

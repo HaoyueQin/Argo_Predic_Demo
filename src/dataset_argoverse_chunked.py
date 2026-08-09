@@ -36,7 +36,7 @@ from tqdm import tqdm
 # ===== Pool worker initializer: ensures each worker has its own ArgoverseMap =====
 def _init_pool_worker():
     """Initialize global ArgoverseMap in each Pool worker process.
-    
+
     This is required because ArgoverseMap contains non-fork-safe internal state
     (file handles, C-level resources, etc.) that becomes corrupted when inherited
     via fork inside an mp.spawn child process. Each worker creates its own fresh

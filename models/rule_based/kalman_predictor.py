@@ -58,4 +58,3 @@ class KalmanTrajectoryPredictor:
             z = self.H @ x
             preds.append(z.copy())
         return np.stack(preds, axis=0)
-
