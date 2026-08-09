@@ -34,7 +34,7 @@
 ### HiVT (Hierarchical Vector Transformer)
 - 原理：层次化 Transformer，局部+全局注意力建模 agent 和 lane 交互
 - 优点：多模态版本 SOTA（FDE 0.97），利用轨迹+车道拓扑
-- 缺点：多模态版依赖 offline optimization 后处理，模型容量大
+- 缺点：多模态版本模型容量大、训练成本高（其多模态输出为 Laplace 混合分布，不依赖 DenseTNT 式的离线目标集优化后处理）
 - 适用：高精地图可用的复杂城市场景
 
 ### DenseTNT（本项目）

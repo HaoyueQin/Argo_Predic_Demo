@@ -53,7 +53,7 @@
 |------|--------|------|
 | `data/raw/train/data/` | 205,942 csv | 训练集（全量） |
 | `data/raw/val/data/` | 39,472 csv | 验证集（评估用） |
-| `train/data_50k/` | 50,000 symlink | 训练子集（快速实验，由 mk50k.sh 生成） |
+| `train/data_50k/` | 50,000 symlink | 训练子集（快速实验，由 mk50k.sh 生成；README 中最终训练为 60k 子集） |
 
 > 数据获取方式见根目录 README。预处理脚本 `scripts/preprocess/argoverse_preprocess_v2.py` 输出到 `data/cleaned/`（DenseTNT 用）与 `data/processed/`（LSTM/Kalman 用）。
 

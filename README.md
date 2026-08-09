@@ -49,8 +49,10 @@ The DenseTNT model was trained on a 60k subset (16 epochs); see
 Download the **Argoverse 1** motion forecasting dataset:
 
 - Official: <https://www.argoverse.org/av1.html> (train ~205k scenes, val ~39k scenes)
-- HD maps are included in the Argoverse API repo under `map_files/`
-  (`argoverse-api/argoverse/utils/` loader expects `ARGOVERSE_MAP_DIR`)
+- HD maps are **not** shipped with this repo (the upstream Argoverse API
+  `.gitignore` excludes `map_files/`). Download them from Argoverse 1
+  (<https://www.argoverse.org/av1.html>) and set `ARGOVERSE_MAP_DIR`
+  (`argoverse-api/argoverse/utils/` loader expects it)
 
 The raw data is **not** stored in this repository. Expected layout:
 
@@ -116,7 +118,8 @@ python -m pytest tests/ -v
   MIT License (Copyright (c) 2024 Tsinghua MARS Lab). This repo keeps the
   upstream commit history and applies the modifications described above.
 - **Argoverse API**: [argoai/argoverse-api](https://github.com/argoai/argoverse-api),
-  MIT License, merged via `git subtree` with its full history preserved.
+  MIT License, merged into `argoverse-api/` with its full commit history
+  preserved (authorship intact).
 - **Paper**: J. Gu, C. Sun, H. Zhao, "DenseTNT: End-to-end Trajectory Prediction
   from Dense Goal Sets", ICCV 2021. <https://arxiv.org/abs/2108.09640>
 

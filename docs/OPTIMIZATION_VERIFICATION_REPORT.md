@@ -1,5 +1,9 @@
 # DenseTNT Optimization 后处理验证报告
 
+> 注：本报告的验证脚本 `eval_optimization.py` 为开发期临时工具，未包含在公开仓库中；
+> 指标数据已固化于 `outputs/eval_output/optimization_comparison.json`，复现方法见 README
+> （训练 → `eval_all_models.py` 评估）。
+
 ## 1. 概述
 
 本报告验证 DenseTNT（ICCV 2021）中的 **Optimization 后处理** 相对默认的 **NMS top-k** 方案的指标提升幅度。在 Argoverse 1 验证集（39,472 场景）上完成了全量对比。

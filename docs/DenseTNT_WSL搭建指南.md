@@ -87,7 +87,8 @@ nvidia-smi
 WSL 2 里 GPU 驱动是 Windows 侧提供的，但编译 Cython 扩展可能需要 CUDA toolkit 里的编译器：
 
 ```bash
-# 安装 CUDA 11.8（兼容 PyTorch 1.6+）
+# 安装 CUDA 11.8（兼容 PyTorch 1.6+；若使用 requirements_densetnt.txt 的 torch>=2.10，
+# 请改装 CUDA 12.x 对应版本）
 wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin
 sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
 wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda-repo-wsl-ubuntu-11-8-local_11.8.0-1_amd64.deb
@@ -282,6 +283,8 @@ python src/train_v4.py --do_train \
 
 - 官方：8×2080Ti → 每个 epoch 20 分钟 → 16 epochs = 5 小时
 - 你的单 GPU（假设 RTX 3060/4060）：每个 epoch 约 40-60 分钟 → 16 epochs = **10-16 小时**
+  （注：此为早期小规模实验的估算；60k 数据在 6GB 笔记本 GPU 上的实际训练时长
+  以 README 与 `DenseTNT_方法概述.md` 中最终实验记录为准）
 
 > 💡 建议：第一次训练先把 epoch 设小一点（`--num_train_epochs 3`），验证能跑通后再跑完整版。
 

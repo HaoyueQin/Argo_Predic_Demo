@@ -48,10 +48,10 @@ DenseTNT（Dense Target-driven Trajectory Prediction）是 Argoverse 轨迹预�
 |------|------|
 | 操作系统 | Windows 11 + WSL 2 (Ubuntu 24.04) |
 | GPU | NVIDIA RTX 4050 Laptop (6GB) |
-| CUDA | 12.2 |
-| Python | 3.12 |
+| CUDA | 12.2（注：环境版本随复现时间变化，以 requirements*.txt 与 README 为准） |
+| Python | 3.12（注：环境版本随复现时间变化，以 requirements*.txt 与 README 为准） |
 | PyTorch | 2.12 + CUDA |
-| 数据集 | Argoverse 1 (8000训练 + 2000验证) |
+| 数据集 | Argoverse 1 (8000训练 + 2000验证)（注：此为早期实验规模；最终训练为 60k 子集，见 README） |
 
 ### 2.2 数据准备
 
@@ -76,6 +76,10 @@ DenseTNT（Dense Target-driven Trajectory Prediction）是 Argoverse 轨迹预�
 ### 2.4 模型验证
 
 在2000个验证场景上评估：
+
+> 注：本节为早期 8k 训练子集的实验结果。最终 60k 数据训练模型的指标
+> （minADE 1.20 / minFDE 2.09 / MR 30.0%，+目标优化 0.94 / 1.35 / 8.4%）
+> 见 README 与 `outputs/eval_output/optimization_comparison.json`。
 
 | 指标 | 值 | 含义 |
 |------|-----|------|

@@ -5,7 +5,7 @@ If you move this project to another computer, you will need to reconfigure the P
 
 ### 步骤 / Steps:
 
-1.  **安装 Python 3.11 / Install Python 3.11**
+1.  **安装 Python 3.11 / Install Python 3.11**（注：环境版本随复现时间变化，以 requirements*.txt 与 README 为准）
     *   确保你的新电脑上安装了 Python 3.11。
     *   Ensure Python 3.11 is installed on your new machine.
 

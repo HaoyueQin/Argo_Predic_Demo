@@ -45,7 +45,7 @@
 下载 **Argoverse 1** 运动预测数据集：
 
 - 官方地址：<https://www.argoverse.org/av1.html>（训练集约 20.5 万场景、验证集约 3.9 万场景）
-- 高精地图在 argoverse-api 仓库的 `map_files/` 目录
+- 高精地图**不随本仓库提供**（上游 argoverse-api 的 `.gitignore` 排除了 `map_files/`），需从 Argoverse 1 官网单独下载并设置 `ARGOVERSE_MAP_DIR`
   （`argoverse-api/argoverse/utils/` 加载器需要 `ARGOVERSE_MAP_DIR` 环境变量）
 
 **原始数据不包含在本仓库中**。预期目录布局：
@@ -111,7 +111,7 @@ python -m pytest tests/ -v
   MIT License（Copyright (c) 2024 Tsinghua MARS Lab）。本仓库保留上游完整
   commit 历史，并在此基础上进行上述改造。
 - **Argoverse API**：[argoai/argoverse-api](https://github.com/argoai/argoverse-api)，
-  MIT License，通过 `git subtree` 合入并保留完整历史。
+  MIT License，合入 `argoverse-api/` 目录并保留完整提交历史（作者署名保留）。
 - **论文**：J. Gu, C. Sun, H. Zhao, "DenseTNT: End-to-end Trajectory Prediction
   from Dense Goal Sets", ICCV 2021。 <https://arxiv.org/abs/2108.09640>
 

@@ -6,7 +6,7 @@
 
 **数据来源**: 百度飞桨平台下载的 Argoverse v1.1 完整数据集
 **处理时间**: 2026-06-02
-**处理环境**: Windows 11, Python 3.13, NumPy 2.4.6, 4 进程并行
+**处理环境**: Windows 11, Python 3.13, NumPy 2.4.6, 4 进程并行（注：环境版本随复现时间变化，以 requirements*.txt 与 README 为准）
 
 ---
 
