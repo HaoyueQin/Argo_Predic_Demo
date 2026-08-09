@@ -96,3 +96,49 @@ class TestProcessArgoverseFunction:
         assert out['y'].shape == (4, 30, 2)
         # AV 的速度方向被旋转到 x 轴：theta 应为 0（AV 沿 x 轴运动）
         assert abs(out['theta'].item()) < 1e-6
+
+    def test_av_short_history_clamps_origin(self, tmp_path):
+        """AV 历史不足 20 帧（如 15 帧）时应 clamp 到最后可用帧，而非越界崩溃。"""
+        csv_path = tmp_path / "43.csv"
+        rows = []
+        av_len = 15
+        actors = [
+            (1, 'AV', (1.0, 0.0)),
+            (2, 'AGENT', (0.5, 0.5)),
+        ]
+        for t in range(NUM_TIMESTAMPS):
+            for track_id, obj_type, step in actors:
+                if obj_type == 'AV' and t >= av_len:
+                    continue  # AV 只出现前 15 帧
+                x = t * step[0]
+                y = t * step[1]
+                rows.append(f"{track_id},{t},{obj_type},{x:.6f},{y:.6f},PIT")
+        with open(csv_path, 'w') as f:
+            f.write("TRACK_ID,TIMESTAMP,OBJECT_TYPE,X,Y,CITY_NAME\n")
+            f.write("\n".join(rows))
+
+        out = process_argoverse(str(csv_path))
+        # origin 应为 AV 最后可用帧 (14, 0)
+        np.testing.assert_allclose(out['origin'].numpy(), [[14.0, 0.0]], atol=1e-4)
+
+    def test_av_too_short_raises(self, tmp_path):
+        """AV 少于 2 帧时无法计算原点/朝向，应给出明确错误。"""
+        csv_path = tmp_path / "44.csv"
+        rows = []
+        actors = [
+            (1, 'AV', (1.0, 0.0)),
+            (2, 'AGENT', (0.5, 0.5)),
+        ]
+        for t in range(NUM_TIMESTAMPS):
+            for track_id, obj_type, step in actors:
+                if obj_type == 'AV' and t >= 1:
+                    continue  # AV 只有 1 帧
+                x = t * step[0]
+                y = t * step[1]
+                rows.append(f"{track_id},{t},{obj_type},{x:.6f},{y:.6f},PIT")
+        with open(csv_path, 'w') as f:
+            f.write("TRACK_ID,TIMESTAMP,OBJECT_TYPE,X,Y,CITY_NAME\n")
+            f.write("\n".join(rows))
+
+        with pytest.raises(ValueError, match="AV trajectory shorter than 2 frames"):
+            process_argoverse(str(csv_path))

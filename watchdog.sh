@@ -9,7 +9,7 @@
 #   - Up to $MAX_RETRIES restarts with exponential backoff.
 #
 # Usage:
-#   bash watchdog.sh "<train command>" [log_file] [max_retries]
+#   bash watchdog.sh "<train command>" [log_file] [max_retries] [master_port]
 #
 # Example:
 #   bash watchdog.sh "python src/train_v4.py --do_train --data_dir train/data \
@@ -34,6 +34,7 @@ OUTPUT_DIR="model_save_full_chunked"
 WD_LOG="$OUTPUT_DIR/watchdog.log"
 PID_FILE="$OUTPUT_DIR/watchdog.pid"
 BACKOFF_BASE=30
+MASTER_PORT="${4:-12355}"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -50,7 +51,7 @@ trap 'rm -f "$PID_FILE"' EXIT
 cleanup() {
     # Release the DDP master port (only kill processes whose command line looks
     # like a torch.distributed training process — never blind-kill port users)
-    lsof -ti :12355 2>/dev/null | while read -r pid; do
+    lsof -ti :"$MASTER_PORT" 2>/dev/null | while read -r pid; do
         if ps -p "$pid" -o args= 2>/dev/null | grep -qE "train_v4|torch.distributed|distributed"; then
             kill -9 "$pid" 2>/dev/null || true
         fi
@@ -73,7 +74,7 @@ while [ "$retry" -lt "$MAX_RETRIES" ]; do
     EXIT_CODE=${PIPESTATUS[0]}
     set -e
 
-    if grep -q "Finish." "$LOG_FILE" 2>/dev/null; then
+    if grep -qF "Finish." "$LOG_FILE" 2>/dev/null; then
         log_wd "Training finished (Finish. found), exit=$EXIT_CODE"
         exit 0
     fi

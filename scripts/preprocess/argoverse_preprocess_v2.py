@@ -314,6 +314,18 @@ def main():
             "stationary": 0, "by_type": defaultdict(int),
         }
 
+        # 断点续跑合并：加载上次运行保存的统计，与本次增量合并后再保存。
+        # 否则续跑（跳过已存在文件）会用仅含本次处理的统计覆盖全量统计，
+        # 导致报告中的保留率/过滤数失真（见 review M6）。
+        prev_stats = {}
+        stats_path = os.path.join(REPORT_DIR, f"stats_{split}.json")
+        if os.path.exists(stats_path):
+            try:
+                with open(stats_path, "r", encoding="utf-8") as f:
+                    prev_stats = json.load(f)
+            except Exception:
+                prev_stats = {}
+
         # 多进程并行处理（限制为 4 进程，防止内存爆炸）
         workers = 4
         print(f"使用 {workers} 个进程并行处理...")
@@ -353,8 +365,16 @@ def main():
         elapsed = time.time() - t0
         print(f"\n{split} 完成! 用时 {elapsed/60:.1f}分钟")
 
-        # 保存统计数据到 JSON
-        stats_path = os.path.join(REPORT_DIR, f"stats_{split}.json")
+        # 合并历史统计（断点续跑场景）后保存
+        if prev_stats:
+            for k in ("valid", "anomaly_scenes", "speed_anomalies", "jump_anomalies", "stationary"):
+                stats[k] += prev_stats.get(k, 0)
+            for k, v in prev_stats.get("skipped", {}).items():
+                stats["skipped"][k] = stats["skipped"].get(k, 0) + v
+            for k, v in prev_stats.get("by_type", {}).items():
+                stats["by_type"][k] = stats["by_type"].get(k, 0) + v
+            stats["total"] = max(stats["total"], prev_stats.get("total", 0))
+
         os.makedirs(REPORT_DIR, exist_ok=True)
         with open(stats_path, "w", encoding="utf-8") as f:
             json.dump({**stats, "by_type": dict(stats["by_type"])},

@@ -73,15 +73,26 @@ def process_argoverse(raw_path: str,) -> Dict:
     df = df[df['TRACK_ID'].isin(actor_ids)]
     num_nodes = len(actor_ids)
 
-    av_df = df[df['OBJECT_TYPE'] == 'AV'].iloc
-    av_index = actor_ids.index(av_df[0]['TRACK_ID'])
-    agent_df = df[df['OBJECT_TYPE'] == 'AGENT'].iloc
-    agent_index = actor_ids.index(agent_df[0]['TRACK_ID'])
+    av_series = df[df['OBJECT_TYPE'] == 'AV']
+    av_hist_len = len(av_series)
+    if av_hist_len < 2:
+        raise ValueError(
+            f"{raw_path}: AV trajectory shorter than 2 frames ({av_hist_len}) "
+            f"— cannot compute scene origin/heading"
+        )
+    av_index = actor_ids.index(av_series.iloc[0]['TRACK_ID'])
+    agent_series = df[df['OBJECT_TYPE'] == 'AGENT']
+    if len(agent_series) == 0:
+        raise ValueError(f"{raw_path}: no AGENT trajectory in data")
+    agent_index = actor_ids.index(agent_series.iloc[0]['TRACK_ID'])
     city = df['CITY_NAME'].values[0]
 
     # make the scene centered at AV
-    origin = torch.tensor([av_df[19]['X'], av_df[19]['Y']], dtype=torch.float)
-    av_heading_vector = origin - torch.tensor([av_df[18]['X'], av_df[18]['Y']], dtype=torch.float)
+    # AV 可能不足 20 帧（历史中途出现）：clamp 到最后一个可用帧，避免硬索引越界
+    av_last = min(19, av_hist_len - 1)
+    av_prev = max(0, av_last - 1)
+    origin = torch.tensor([av_series.iloc[av_last]['X'], av_series.iloc[av_last]['Y']], dtype=torch.float)
+    av_heading_vector = origin - torch.tensor([av_series.iloc[av_prev]['X'], av_series.iloc[av_prev]['Y']], dtype=torch.float)
     theta = torch.atan2(av_heading_vector[1], av_heading_vector[0])
     rotate_mat = torch.tensor([[torch.cos(theta), -torch.sin(theta)],
                                [torch.sin(theta), torch.cos(theta)]])

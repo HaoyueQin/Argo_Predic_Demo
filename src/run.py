@@ -1,4 +1,5 @@
 import argparse
+import glob
 import itertools
 import logging
 import os
@@ -17,16 +18,28 @@ from tqdm import tqdm as tqdm_
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
+# ---- Compile Cython (path-independent; only when stale or missing) ----
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 def compile_pyx_files():
-    if True:
-        os.chdir('src/')
-        if not os.path.exists('utils_cython.c') or \
-                os.path.getmtime('utils_cython.pyx') > os.path.getmtime('utils_cython.c'):
+    pyx = os.path.join(SRC_DIR, 'utils_cython.pyx')
+    c_file = os.path.join(SRC_DIR, 'utils_cython.c')
+    # Linux 产物为 .so，Windows 为 .pyd
+    so_files = glob.glob(os.path.join(SRC_DIR, 'utils_cython*.so')) + \
+        glob.glob(os.path.join(SRC_DIR, 'utils_cython*.pyd'))
+    try:
+        needs_compile = not so_files or not os.path.exists(c_file) or \
+            os.path.getmtime(pyx) > os.path.getmtime(c_file)
+        if needs_compile:
+            cwd = os.getcwd()
+            os.chdir(SRC_DIR)
             os.system('cython -a utils_cython.pyx && python setup.py build_ext --inplace')
-        os.chdir('../')
+            os.chdir(cwd)
+    except Exception as e:  # never block training on cython
+        print(f'[WARN] Cython compile skipped: {e}')
 
 
-# Comment out this line if pyx files have been compiled manually.
 compile_pyx_files()
 
 import utils, structs
@@ -47,27 +60,20 @@ def learning_rate_decay(args, i_epoch, optimizer, optimizer_2=None):
     utils.i_epoch = i_epoch
 
     if 'set_predict' in args.other_params:
-        if not hasattr(args, 'set_predict_lr'):
-            args.set_predict_lr = 1.0
-        else:
-            args.set_predict_lr *= 0.9
-
-        if i_epoch > 0 and i_epoch % 5 == 0:
-            for p in optimizer.param_groups:
-                p['lr'] *= 0.3
-
+        # set_predict 内部学习率：确定性 0.9^i_epoch（--resume 后与从头一致）
+        args.set_predict_lr = 0.9 ** i_epoch
         if 'complete_traj-3' in args.other_params:
-            assert False
+            assert False, 'set_predict and complete_traj-3 are mutually exclusive'
 
-    else:
-        if i_epoch > 0 and i_epoch % 5 == 0:
-            for p in optimizer.param_groups:
-                p['lr'] *= 0.3
-
-        if 'complete_traj-3' in args.other_params:
-            if i_epoch > 0 and i_epoch % 5 == 0:
-                for p in optimizer_2.param_groups:
-                    p['lr'] *= 0.3
+    # LR 按 epoch 确定性衰减：lr(epoch) = lr0 * 0.3^(epoch // 5)。
+    # 绝对公式保证 --resume 后与从头训练完全一致（避免 checkpoint 中已衰减
+    # 的 lr 被再次乘以衰减因子，见 review S1）。
+    lr_now = args.learning_rate * (0.3 ** (i_epoch // 5))
+    for p in optimizer.param_groups:
+        p['lr'] = lr_now
+    if optimizer_2 is not None:
+        for p in optimizer_2.param_groups:
+            p['lr'] = lr_now
 
 
 def gather_and_output_motion_metrics(args, device, queue, motion_metrics, metric_names, MotionMetrics):
@@ -95,7 +101,7 @@ def gather_and_output_others(args, device, queue, motion_metrics):
             for key in utils.other_errors_dict:
                 utils.other_errors_dict[key].extend(other_errors_dict_[key])
 
-        score_file = score_file = utils.get_eval_identifier()
+        score_file = utils.get_eval_identifier()
         utils.logging('other_errors {}'.format(utils.other_errors_to_string()),
                       type=score_file, to_screen=True, append_time=True)
 
@@ -111,7 +117,8 @@ def single2joint(pred_trajectory, pred_score, args):
     scores = []
     for i in range(6):
         for j in range(6):
-            score = pred_score[0, i] * pred_score[0, j]
+            # 联合概率 = agent0 模式 i 的概率 × agent1 模式 j 的概率
+            score = pred_score[0, i] * pred_score[1, j]
             scores.append(score)
             li.append((score, i, j))
 
@@ -244,6 +251,7 @@ def demo_basic(rank, world_size, kwargs, queue):
             lr=args.learning_rate)
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer_2 = None
 
     if rank == 0 and world_size > 0:
         receive = queue.get()
@@ -285,10 +293,7 @@ def demo_basic(rank, world_size, kwargs, queue):
             print(f'[Resume] No checkpoint found, starting from scratch')
 
     for i_epoch in range(start_epoch, int(args.num_train_epochs)):
-        if 'complete_traj-3' in args.other_params:
-            learning_rate_decay(args, i_epoch, optimizer, optimizer_2)
-        else:
-            learning_rate_decay(args, i_epoch, optimizer)
+        learning_rate_decay(args, i_epoch, optimizer, optimizer_2)
         utils.logging(optimizer.state_dict()['param_groups'])
         if rank == 0:
             print('Epoch: {}/{}'.format(i_epoch, int(args.num_train_epochs)), end='  ')

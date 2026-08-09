@@ -42,6 +42,7 @@ import copy
 import glob
 import json
 import logging
+import math
 import os
 import sys
 import time
@@ -64,7 +65,9 @@ SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 def compile_pyx_files():
     pyx = os.path.join(SRC_DIR, 'utils_cython.pyx')
     c_file = os.path.join(SRC_DIR, 'utils_cython.c')
-    so_files = glob.glob(os.path.join(SRC_DIR, 'utils_cython*.so'))
+    # Linux 产物为 .so，Windows 为 .pyd
+    so_files = glob.glob(os.path.join(SRC_DIR, 'utils_cython*.so')) + \
+        glob.glob(os.path.join(SRC_DIR, 'utils_cython*.pyd'))
     try:
         needs_compile = not so_files or not os.path.exists(c_file) or \
             os.path.getmtime(pyx) > os.path.getmtime(c_file)
@@ -210,7 +213,7 @@ def do_validate(args, epoch, model_save_dir, model):
 
     # 独立 temp_file_dir 避免与训练缓存冲突
     val_args = copy.deepcopy(args)
-    val_args.temp_file_dir = os.path.join(args.output_dir, 'temp_file_val')
+    val_args.temp_file_dir = utils.get_eval_temp_dir(args.output_dir, args.data_dir_for_val)
     val_args.data_dir = [args.data_dir_for_val]  # ChunkedDataset expects list
     # 验证缓存由主进程预构建（build_validation_cache），此处直接复用。
     # 不能在 mp.spawn 子进程内用 fork Pool 重建缓存——fork 继承的
@@ -399,15 +402,15 @@ def demo_basic(rank, world_size, kwargs, queue):
             print(f'[EarlyStop] Stopping at epoch {i_epoch} (flag set)')
             break
 
-        # LR decay: 每 5 epoch 衰减为 30%（原论文策略）
-        if i_epoch > 0 and i_epoch % 5 == 0:
-            for pg in optimizer.param_groups:
-                pg['lr'] *= LR_DECAY
-            if optimizer_2 is not None:
-                for pg in optimizer_2.param_groups:
-                    pg['lr'] *= LR_DECAY
-            if rank == 0:
-                print(f'[LR] Decayed to {optimizer.param_groups[0]["lr"]:.8f} at epoch {i_epoch}')
+        # LR 按 epoch 确定性衰减：lr(epoch) = lr0 * LR_DECAY^(epoch // 5)。
+        # 绝对公式保证 --resume 后与从头训练完全一致——旧的累积乘法会在
+        # checkpoint 已衰减的 lr 上再乘一次（双重衰减，见 review S1）。
+        lr_now = args.learning_rate * (LR_DECAY ** (i_epoch // 5))
+        for pg in optimizer.param_groups:
+            pg['lr'] = lr_now
+        if optimizer_2 is not None:
+            for pg in optimizer_2.param_groups:
+                pg['lr'] = lr_now
 
         if rank == 0:
             print(f'\n{"="*60}')
@@ -444,7 +447,7 @@ def demo_basic(rank, world_size, kwargs, queue):
                 print(f'[Val] Skipping this epoch for early stopping (NaN)')
 
             # NaN check FIRST — before touching history
-            if not (minFDE == minFDE):  # NaN check
+            if math.isnan(minFDE):
                 print(f'[Val] Validation returned NaN, skipping this epoch entirely')
             else:
                 # Update history (only valid numbers)
@@ -497,7 +500,7 @@ def build_validation_cache(args):
               f'skip validation cache (inline validation will be unavailable)')
         return
     val_args = copy.deepcopy(args)
-    val_args.temp_file_dir = os.path.join(args.output_dir, 'temp_file_val')
+    val_args.temp_file_dir = utils.get_eval_temp_dir(args.output_dir, args.data_dir_for_val)
     val_args.data_dir = [args.data_dir_for_val]
     val_args.reuse_temp_file = False  # auto-detect existing cache
     val_args.do_eval = True           # origin_labels required for evaluation
@@ -518,10 +521,33 @@ def build_validation_cache(args):
 # =========================================================================
 #  主入口
 # =========================================================================
+def build_train_cache(args):
+    """主进程预构建训练数据缓存。
+
+    每个 DDP rank 的 demo_basic 都会构造 ChunkedDataset；若缓存不存在，
+    多 rank 会并发重建同一批文件（竞态 + 重复劳动，见 review S4）。
+    在主进程（spawn 之前）构建一次，所有 rank 复用。
+    """
+    cache_path = os.path.join(args.temp_file_dir, utils.get_name('ex_list'))
+    if os.path.exists(cache_path):
+        return
+    from dataset_argoverse_chunked import Dataset as ChunkedDataset
+    try:
+        ds = ChunkedDataset(args, args.train_batch_size, to_screen=True)
+        print(f'[Data] Training cache ready: {len(ds)} samples')
+        del ds
+    except Exception as e:
+        print(f'[WARN] Training cache build failed ({e}); ranks will retry independently')
+        import traceback
+        traceback.print_exc()
+
+
 def run(args):
     history = load_history(args.output_dir)
     # 预构建验证缓存必须在主进程完成（详见 build_validation_cache docstring）
     build_validation_cache(args)
+    # 训练缓存同样在主进程预构建，避免多 rank 并发重建（见 S4）
+    build_train_cache(args)
     ctx = mp.get_context('spawn')
     stop_flag = ctx.Value('i', 0)
 

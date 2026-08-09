@@ -352,6 +352,11 @@ def preprocess(args, id2info, mapping):
             labels = [0.0 for _ in range(60)]
 
     if 'goals_2D' in args.other_params:
+        # goals_2D 在 get_sub_map 中采样（依赖 --use_map）；为空（如地图边缘场景）
+        # 时丢弃样本，避免下游 lane-scoring / goal-sampling 在空张量上崩溃。
+        assert args.use_map, 'goals_2D requires --use_map'
+        if len(mapping['goals_2D']) == 0:
+            return None
         point_label = np.array(labels[-2:])
         mapping['goals_2D_labels'] = np.argmin(get_dis(mapping['goals_2D'], point_label))
 
@@ -441,11 +446,6 @@ def argoverse_get_instance(lines, file_name, args):
         max_vector_num = vector_num
 
     if 'cent_x' not in mapping:
-        return None
-
-    if 'goals_2D' in mapping and len(mapping['goals_2D']) == 0:
-        # No lane/goal points near this sample (e.g. map edge): drop it instead of
-        # crashing later in the lane-scoring / goal-sampling stages.
         return None
 
     if args.do_eval:
@@ -568,8 +568,19 @@ def post_eval(args, file2pred, file2labels, DEs):
             type=score_file, to_screen=True, append_time=True)
     utils.logging('other_errors {}'.format(utils.other_errors_to_string()),
                   type=score_file, to_screen=True, append_time=True)
+
+    if not file2labels:
+        # do_test 模式没有 ground truth：跳过指标计算（否则 min_ade/DEs 为空会除零）
+        utils.logging('post_eval: no ground-truth labels (do_test) — skipping metrics',
+                      type=score_file, to_screen=True, append_time=True)
+        utils.logging(vars(args), is_json=True,
+                      type=score_file, to_screen=True, append_time=True)
+        return
+
     metric_results = eval_forecasting.get_displacement_errors_and_miss_rate(file2pred, file2labels, 6, 30, 2.0)
     utils.logging(metric_results, type=score_file, to_screen=True, append_time=True)
+    if not DEs:
+        return
     DE = np.concatenate(DEs, axis=0)
     length = DE.shape[1]
     DE_score = [0, 0, 0, 0]

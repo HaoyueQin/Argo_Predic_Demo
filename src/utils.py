@@ -6,13 +6,12 @@ import multiprocessing
 import os
 import pickle
 import random
-import subprocess
+import shutil
 import sys
 import time
 import pdb
 from collections import defaultdict
 from multiprocessing import Process
-from random import randint
 from typing import Dict, List, Tuple, NamedTuple, Any, Union, Optional
 
 import matplotlib as mpl
@@ -24,10 +23,6 @@ from matplotlib.pyplot import MultipleLocator
 from torch import Tensor
 
 import utils_cython, structs
-
-_False = False
-if _False:
-    import utils_cython
 
 
 def add_argument(parser):
@@ -310,11 +305,8 @@ def init(args_: Args, logger_):
     if not args.do_eval and not args.debug:
         src_dir = os.path.join(args.output_dir, 'src')
         if os.path.exists(src_dir):
-            subprocess.check_output('rm -r {}'.format(src_dir), shell=True, encoding='utf-8')
-        os.makedirs(src_dir, exist_ok=False)
-        for each in os.listdir('src'):
-            is_dir = '-r' if os.path.isdir(os.path.join('src', each)) else ''
-            subprocess.check_output(f'cp {is_dir} {os.path.join("src", each)} {src_dir}', shell=True, encoding='utf-8')
+            shutil.rmtree(src_dir)
+        shutil.copytree('src', src_dir)
         with open(os.path.join(src_dir, 'cmd'), 'w') as file:
             file.write(' '.join(sys.argv))
     args.model_save_dir = os.path.join(args.output_dir, 'model_save')
@@ -377,6 +369,16 @@ def init(args_: Args, logger_):
 def add_eval_param(param):
     if param not in args.eval_params:
         args.eval_params.append(param)
+
+
+def get_eval_temp_dir(output_dir, data_dir):
+    """验证集缓存目录：按数据目录 basename 隔离，保证不同数据集互不污染。
+
+    train_v4 / eval_all_models / eval_single 共用此规则，避免同一验证集
+    在不同脚本下产生多份缓存（见 review M5）。
+    """
+    tag = os.path.basename(str(data_dir).rstrip('/\\')) or 'val'
+    return os.path.join(output_dir, f'temp_file_{tag}')
 
 
 def get_name(name='', append_time=False):
@@ -458,17 +460,6 @@ def rotate_(x, y, cos, sin):
 index_file = 0
 
 file2pred = {}
-
-
-def __iter__(self):  # iterator to load data
-    for __ in range(math.ceil(len(self.ex_list) / float(self.batch_size))):
-        batch = []
-        for __ in range(self.batch_size):
-            idx = randint(0, len(self.ex_list) - 1)
-            batch.append(self.__getitem__(idx))
-        # To Tensor
-        yield batch_list_to_batch_tensors(batch)
-
 
 files_written = {}
 
@@ -618,7 +609,6 @@ def visualize_goals_2D(mapping, goals_2D, scores: np.ndarray, future_frame_num, 
 
     # plt.figure(0, dpi=300)
     cmap = plt.cm.get_cmap('Reds')
-    vmin = np.log(0.0001)
     vmin = np.log(0.00001)
     scores = np.clip(scores.copy(), a_min=vmin, a_max=np.inf)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=np.max(scores)))
@@ -1327,8 +1317,6 @@ def run_process(queue, queue_res, args):
             break
         idx_in_batch, file_name, (goals_2D, scores), kwargs = value
         scores = np.exp(scores)
-        if file_name == 'test_obs/data/33670.csv':
-            print('aaa', len(scores), np.sum(scores), scores, goals_2D)
 
         if 'MRminFDE' in args.other_params:
             assert 'cnt_sample' in args.other_params
@@ -1676,7 +1664,7 @@ def get_trajectory_upsample(inputs: np.ndarray, future_frame_num, future_test_fr
     shape_prefix = list(inputs.shape[:-2])
     assert len(shape_prefix) > 0
     inputs = inputs.reshape(-1, future_test_frame_num, future_frame_num)
-    outputs = np.zeros(len(inputs), future_frame_num, 2)
+    outputs = np.zeros((len(inputs), future_frame_num, 2))
     outputs[:, stride - 1::stride, :] = inputs
     outputs = outputs.reshape(*shape_prefix, future_frame_num, 2)
     return outputs

@@ -40,8 +40,15 @@ if [ -z "$SUBSET" ] || [ "$SUBSET" = "/" ] || [ "$SUBSET" = "." ] || [ "$SUBSET"
 fi
 
 # Resolve both paths to absolute form for containment checks
+# 父目录必须存在，否则 cd 失败会导致 SUBSET_ABS 为空串，进而误报
+# "subset contains source"（见 review L8）
+SUBSET_PARENT="$(dirname "$SUBSET")"
+if [ ! -d "$SUBSET_PARENT" ]; then
+    echo "Error: parent directory of subset does not exist: $SUBSET_PARENT" >&2
+    exit 1
+fi
 TRAIN_ABS="$(cd "$(dirname "$TRAIN")" && pwd)/$(basename "$TRAIN")"
-SUBSET_ABS="$(cd "$(dirname "$SUBSET")" 2>/dev/null && pwd)/$(basename "$SUBSET")"
+SUBSET_ABS="$(cd "$SUBSET_PARENT" && pwd)/$(basename "$SUBSET")"
 if [ "$SUBSET_ABS" = "$TRAIN_ABS" ] || [ "${TRAIN_ABS#$SUBSET_ABS/}" != "$TRAIN_ABS" ]; then
     echo "Error: subset dir '$SUBSET' is the source dir or contains it (would delete source data)" >&2
     exit 1

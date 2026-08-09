@@ -43,7 +43,7 @@
 | `model_save_full_chunked/model_save/model.{1..N}.bin` | 每 epoch 模型权重 |
 | `model_save_full_chunked/model_save/checkpoint.pt` | 含 optimizer state（`--resume` 用） |
 | `model_save_full_chunked/temp_file/` | 训练数据缓存 |
-| `model_save_full_chunked/temp_file_val/` | 验证数据缓存（独立，不污染训练缓存） |
+| `model_save_full_chunked/temp_file_<数据目录名>/` | 验证数据缓存（按数据目录 basename 隔离，train_v4 / eval_all_models / eval_single 共用同一规则，不污染训练缓存） |
 | `model_save_full_chunked/training_history.json` | 训练历史 |
 | `model_save_full_chunked/val_results_all.txt` | 验证结果汇总 |
 

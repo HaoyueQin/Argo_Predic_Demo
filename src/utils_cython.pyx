@@ -20,12 +20,6 @@ cdef:
     float M_PI = 3.14159265358979323846
     int pixel_num_1m = 4
 
-cdef int get_round(float a):
-    if a > 0:
-        return int(a + 0.5)
-    else:
-        return -int(fabs(a) + 0.5)
-
 cdef np.float32_t get_dis_point(np.float32_t a, np.float32_t b):
     return sqrt(a * a + b * b)
 
@@ -137,8 +131,9 @@ cdef np.float32_t get_value(np.ndarray[np.float32_t, ndim=2] goals_2D, np.ndarra
     for i in range(100):
         if i * i == cnt_sample:
             cnt_len = i
+            break
     if cnt_len == 0:
-        assert False, 'cnt_sample != square'
+        raise ValueError('cnt_sample must be a perfect square in [1, 10000], got %d' % cnt_sample)
 
     for i in range(n):
         point[0], point[1] = goals_2D[i, 0], goals_2D[i, 1]
@@ -178,8 +173,6 @@ cdef np.float32_t get_value(np.ndarray[np.float32_t, ndim=2] goals_2D, np.ndarra
 
     return value
 
-args = None
-
 def _get_optimal_targets(np.ndarray[np.float32_t, ndim=2] goals_2D, np.ndarray[np.float32_t, ndim=1] scores,
                          file_name, objective, int num_step, int cnt_sample, MRratio, float opti_time, kwargs):
     cdef np.float32_t t, threshold, expectation, nxt_expectation, lr, ratio, fire_prob, min_expectation
@@ -205,7 +198,7 @@ def _get_optimal_targets(np.ndarray[np.float32_t, ndim=2] goals_2D, np.ndarray[n
             scores[m] = scores[i]
             m += 1
     if m == 0:
-        print('warning: m == 0')
+        raise ValueError('no goal candidates remain after threshold filtering (all scores below threshold)')
     n = m
 
     for j in range(6):

@@ -84,7 +84,10 @@ class GlobalGraph(nn.Module):
 
     def forward(self, hidden_states, attention_mask=None, mapping=None, return_scores=False):
         mixed_query_layer = self.query(hidden_states)
-        mixed_key_layer = nn.functional.linear(hidden_states, self.key.weight)
+        # 与 CrossAttention 一致：key 投影使用完整 Linear（含 bias）。
+        # 上游用 nn.functional.linear(weight) 手动投影，导致 key 的 bias 被训练
+        # 但从不参与前向（见 review L1）。
+        mixed_key_layer = self.key(hidden_states)
         mixed_value_layer = self.value(hidden_states)
 
         query_layer = self.transpose_for_scores(mixed_query_layer)

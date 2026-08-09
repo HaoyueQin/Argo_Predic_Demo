@@ -98,10 +98,9 @@ def main():
     logging.basicConfig(level=logging.INFO)
     utils.init(args, logger)
 
-    # 每个 data_dir 用独立缓存目录；reuse 由缓存是否存在自动决定。
+    # 缓存目录规则与 train_v4 / eval_all_models 统一（按数据目录 basename 隔离）；
     # 缓存必须含 origin_labels（do_eval=True 时构建），故不能用 utils.init 的 reuse 逻辑。
-    cache_tag = os.path.basename(args_cli.data_dir.rstrip('/\\')) or 'val'
-    args.temp_file_dir = os.path.join(args_cli.output_dir, f'temp_file_{cache_tag}')
+    args.temp_file_dir = utils.get_eval_temp_dir(args_cli.output_dir, args_cli.data_dir)
     args.reuse_temp_file = args_cli.no_cache is False
     os.makedirs(args.temp_file_dir, exist_ok=True)
 

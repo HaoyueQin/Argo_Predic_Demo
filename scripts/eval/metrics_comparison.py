@@ -1,22 +1,29 @@
-#!/usr/bin/env python3
-"""Generate PPT metrics chart (English labels for font compatibility)"""
+"""Generate PPT metrics chart (English labels for font compatibility)
+
+数据来源：
+  - CV / Kalman / LSTM 为 README 记录的基线实验值（CV 为近似值 `~`）
+  - DenseTNT 两行来自 outputs/eval_output/optimization_comparison.json
+    （Argoverse v1.1 验证集 39472 场景的真实评估结果）
+"""
+import json
 import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+JSON_PATH = os.path.join(OUT, '..', '..', 'outputs', 'eval_output', 'optimization_comparison.json')
+with open(JSON_PATH, encoding='utf-8') as f:
+    _data = json.load(f)
 
-methods = ["CV", "Kalman", "LSTM", "DenseTNT\n(Ours)"]
-# NOTE: 以下数值为早期实验（8k 训练子集）的展示值，仅用于生成 PPT 图表；
-# 最新结果见 README 与 outputs/eval_output/optimization_comparison.json。
-minADE = [3.50, 2.80, 1.80, 1.036]
-minFDE = [7.00, 5.50, 3.50, 1.502]
-MR     = [60.0, 45.0, 25.0, 10.9] # 修改这个地方使用其他几种模型的数据即可
+methods = ["CV", "Kalman", "LSTM", "DenseTNT\n(ours)", "DenseTNT\n+optimization"]
+# README 基线值：CV ~5.0 / ~10.0 / ~80%（近似），Kalman / LSTM 为实验值
+minADE = [5.0, 2.26, 1.99, _data['baseline']['minADE'], _data['optimization']['minADE']]
+minFDE = [10.0, 5.15, 4.60, _data['baseline']['minFDE'], _data['optimization']['minFDE']]
+MR     = [80.0, 50.0, 35.0, _data['baseline']['MR'] * 100, _data['optimization']['MR'] * 100]
 
-fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
-colors = ["#aec7e8", "#aec7e8", "#aec7e8", "#d62728"]
+fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
+colors = ["#aec7e8", "#aec7e8", "#aec7e8", "#d62728", "#1f77b4"]
 
 for ax, vals, title in zip(
     axes,

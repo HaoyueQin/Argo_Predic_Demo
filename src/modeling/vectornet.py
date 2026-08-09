@@ -16,11 +16,12 @@ class NewSubGraph(nn.Module):
         super(NewSubGraph, self).__init__()
         if depth is None:
             depth = args.sub_graph_depth
-        self.layers = nn.ModuleList([MLP(hidden_size, hidden_size // 2) for _ in range(depth)])
 
         self.layer_0 = MLP(hidden_size)
         self.layers = nn.ModuleList([GlobalGraph(hidden_size, num_attention_heads=2) for _ in range(depth)])
         self.layers_2 = nn.ModuleList([LayerNorm(hidden_size) for _ in range(depth)])
+        # NOTE: layers_3 / layers_4 未被 forward 使用，但保留在模型中以确保与历史
+        # checkpoint 的 state_dict 键兼容（strict 加载）。移除需同步迁移旧权重。
         self.layers_3 = nn.ModuleList([LayerNorm(hidden_size) for _ in range(depth)])
         self.layers_4 = nn.ModuleList([GlobalGraph(hidden_size) for _ in range(depth)])
         self.layer_0_again = MLP(hidden_size)

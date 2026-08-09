@@ -81,8 +81,9 @@ def main():
     utils.init(args, logger)
 
     # utils.init 会追加 '/temp_file' 到 temp_file_dir 并置 reuse_temp_file=True，
-    # 这里按验证用途覆盖：独立缓存目录 + 自动检测（缓存必须含 origin_labels）
-    args.temp_file_dir = os.path.join(args_cli.output_dir, 'temp_file_val')
+    # 这里按验证用途覆盖：独立缓存目录 + 自动检测（缓存必须含 origin_labels）。
+    # 缓存目录规则与 train_v4 / eval_single 统一（按数据目录 basename 隔离）。
+    args.temp_file_dir = utils.get_eval_temp_dir(args_cli.output_dir, args_cli.data_dir)
     args.reuse_temp_file = False
     os.makedirs(args.temp_file_dir, exist_ok=True)
 

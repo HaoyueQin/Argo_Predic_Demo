@@ -9,7 +9,7 @@ Usage:
 Output:
     - Console: ADE/FDE comparison table
     - Plots: trajectory comparison figures
-    - Saved figures to ./results/ directory
+    - Saved figures to ./scripts/results/ directory
 """
 
 import argparse
