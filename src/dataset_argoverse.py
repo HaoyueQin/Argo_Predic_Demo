@@ -31,7 +31,11 @@ def _init_pool_worker():
 
 # PATCHED_V2: Module-level function for multiprocessing Pool (must be picklable)
 def _pool_load_file(file_and_args):
-    """Load a single CSV and return compressed pickle."""
+    """Load a single CSV and return (compressed_pickle, vector_num).
+
+    返回 vector_num 供主进程聚合 max_vector_num：Pool worker 的全局变量
+    不会跨进程回传，主进程直接读取会得到初始值 0（见 logging 修复）。
+    """
     import zlib as _zlib
     import pickle as _pickle
     import argparse as _argparse
@@ -42,7 +46,8 @@ def _pool_load_file(file_and_args):
         _args = _argparse.Namespace(**args_dict)
         instance = argoverse_get_instance(flines, file, _args)
         if instance is not None:
-            return _zlib.compress(_pickle.dumps(instance))
+            return (_zlib.compress(_pickle.dumps(instance)),
+                    instance.get('vector_num', 0))
     except Exception as e:
         if not hasattr(_pool_load_file, '_err_count'):
             _pool_load_file._err_count = 0
@@ -53,7 +58,7 @@ def _pool_load_file(file_and_args):
             import traceback
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
-    return None
+    return (None, 0)
 
 
 import utils_cython
@@ -166,9 +171,7 @@ def get_sub_map(args: utils.Args, x, y, city_name, vectors=[], polyline_spans=[]
 
                 # Subdivide lanes to get more fine-grained 2D goals.
                 if 'subdivide' in args.other_params:
-                    subdivide_points = get_subdivide_points(polygon)
-                    points.extend(subdivide_points)
-                    subdivide_points = get_subdivide_points(polygon, include_self=True)
+                    points.extend(get_subdivide_points(polygon))
 
             mapping['goals_2D'] = np.array(points)
 
@@ -445,6 +448,8 @@ def argoverse_get_instance(lines, file_name, args):
     if vector_num > max_vector_num:
         max_vector_num = vector_num
 
+    mapping['vector_num'] = vector_num  # for cross-process max aggregation
+
     if 'cent_x' not in mapping:
         return None
 
@@ -476,6 +481,7 @@ def argoverse_get_instance(lines, file_name, args):
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, args, batch_size, to_screen=True):
+        global max_vector_num
         data_dir = args.data_dir
         self.ex_list = []
         self.args = args
@@ -513,7 +519,11 @@ class Dataset(torch.utils.data.Dataset):
                     results = pool.imap_unordered(_pool_load_file, file_args_list, chunksize=64)
                     for result in results:
                         if result is not None:
-                            self.ex_list.append(result)
+                            compressed, vn = result
+                            if compressed is not None:
+                                self.ex_list.append(compressed)
+                                if vn > max_vector_num:
+                                    max_vector_num = vn
                         pbar.update(1)
 
             else:

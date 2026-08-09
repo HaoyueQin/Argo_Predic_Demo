@@ -615,6 +615,7 @@ def visualize_goals_2D(mapping, goals_2D, scores: np.ndarray, future_frame_num, 
     plt.colorbar(sm)
 
     trajs = mapping['trajs']
+    name = ''
     if args.argoverse:
         name = os.path.split(mapping['file_name'])[1].split('.')[0]
     name = name + '.FDE={}'.format(loss)
@@ -843,6 +844,16 @@ NMS_LIST = [2.0, 1.7, 1.4, 2.3, 2.6] + [2.9, 3.2, 3.5, 3.8, 4.1] + [2.7, 2.8, 3.
 
 NMS_START = 6
 
+
+def speed_scale_factor(speed):
+    """按目标车速缩放 NMS/DY-NMS 阈值：高速目标允许更大的去重半径。
+
+    上游 utils_cython.pyx 从未定义该函数（上游遗留缺口），此前依赖
+    visualize_map_v3.py 的 monkey-patch 才能运行；此处定义为纯 Python 实现，
+    与 patch 语义一致，任何调用方（--nms_threshold / DY-NMS）直接可用。
+    """
+    return max(0.5, min(3.0, 1.0 + speed / 10.0))
+
 DYNAMIC_NMS_START = 30
 
 DYNAMIC_NMS_LIST = [3.2, 3.8, 4.8, 5.4, 6.0] + [6.6, 7.2, 7.8, 8.4, 0.0] + \
@@ -856,8 +867,8 @@ def select_goals_by_NMS(mapping: Dict, goals_2D: np.ndarray, scores: np.ndarray,
 
     add_eval_param(f'DY_NMS={threshold}')
 
-    speed_scale_factor = utils_cython.speed_scale_factor(speed)
-    threshold = threshold * speed_scale_factor
+    scale = speed_scale_factor(speed)
+    threshold = threshold * scale
 
     pred_goals = []
     pred_probs = []
@@ -905,7 +916,7 @@ def select_goal_pairs_by_NMS(mapping: Dict, mapping_oppo: Dict, goals_4D: np.nda
 
     add_eval_param(f'DY_NMS={threshold}')
 
-    thresholds = (threshold * utils_cython.speed_scale_factor(speed), threshold * utils_cython.speed_scale_factor(speed_oppo))
+    thresholds = (threshold * speed_scale_factor(speed), threshold * speed_scale_factor(speed_oppo))
 
     pred_goal_pairs = []
     pred_probs = []
@@ -1062,8 +1073,8 @@ def get_FDE(points: np.ndarray, scores: np.ndarray, mapping, gt_goal=None, metho
         elif DYNAMIC_NMS_START <= method < DYNAMIC_NMS_START + len(DYNAMIC_NMS_LIST):
             threshold = DYNAMIC_NMS_LIST[method - DYNAMIC_NMS_START]
             add_eval_param(f'DY_NMS={threshold}')
-            speed_scale_factor = utils_cython.speed_scale_factor(mapping['speed'])
-            threshold = threshold * speed_scale_factor
+            scale = speed_scale_factor(mapping['speed'])
+            threshold = threshold * scale
 
             # print('threshold', threshold)
             predict = []
@@ -1318,6 +1329,11 @@ def run_process(queue, queue_res, args):
         idx_in_batch, file_name, (goals_2D, scores), kwargs = value
         scores = np.exp(scores)
 
+        # MRratio 在 'MRminFDE' 时由参数指定，否则默认 1.0（纯 MR 目标）。
+        # 上游只在 'MRminFDE' 分支内赋值，导致 'cnt_sample' 单独出现时
+        # MRratio 未定义（UnboundLocalError，见 OPTIMIZATION_VERIFICATION_REPORT
+        # Bug 3）；此处改为无条件初始化。
+        MRratio = 1.0
         if 'MRminFDE' in args.other_params:
             assert 'cnt_sample' in args.other_params
             MRratio = float(args.other_params['MRminFDE']) if args.other_params['MRminFDE'] is not True else 1.0

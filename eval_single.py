@@ -83,6 +83,7 @@ def main():
     utils.add_argument(arg_parser)
     args, _ = arg_parser.parse_known_args([
         '--data_dir', args_cli.data_dir,
+        '--data_dir_for_val', args_cli.data_dir,
         '--output_dir', args_cli.output_dir,
         '--temp_file_dir', os.path.join(args_cli.output_dir, 'temp_file_val'),
         '--eval_batch_size', str(args_cli.eval_batch_size),

@@ -22,3 +22,8 @@ imageio>=2.30
 pyntcloud>=0.3.1
 python-docx>=1.0
 setuptools>=70,<82
+# vendored argoverse-api 的运行时依赖（其 setup.py 只 pin 旧版本，README 用
+# --no-deps 安装，这里显式补齐；colour 新版 API 不兼容，必须 pin 0.1.5）
+colour==0.1.5
+descartes
+typing_extensions

@@ -131,7 +131,9 @@ def process_one(args):
         # 异常检测按秒计算，这里把微秒统一换算为秒；输出 CSV 仍保留原始
         # 时间戳（DenseTNT 加载时做相对化处理，对单位不敏感）。
         av_ts_raw, agent_ts_raw = av_ts, agent_ts
-        dts = np.diff(np.concatenate([av_ts, agent_ts]))
+        # 分别对 AV 与 AGENT 求帧间隔再合并：直接拼接两段轨迹会在连接处
+        # 产生伪间隔（中位数虽稳健，但分开计算更准确）。
+        dts = np.concatenate([np.diff(av_ts), np.diff(agent_ts)]) if len(av_ts) > 1 or len(agent_ts) > 1 else np.array([])
         median_dt = float(np.median(dts)) if len(dts) else 0.0
         if median_dt > 1.0:  # not seconds → microseconds
             av_ts = av_ts * 1e-6

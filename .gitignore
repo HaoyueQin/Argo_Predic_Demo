@@ -57,6 +57,7 @@ cpu_power.json
 outputs/visualizations/
 scripts/results/
 charts/*.html
+scripts/eval/*.png
 
 # ==================== Archives ====================
 *.tar.gz

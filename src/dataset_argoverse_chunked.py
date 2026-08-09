@@ -188,9 +188,7 @@ def get_sub_map(args: utils.Args, x, y, city_name, vectors=[], polyline_spans=[]
 
                 # Subdivide lanes to get more fine-grained 2D goals.
                 if 'subdivide' in args.other_params:
-                    subdivide_points = get_subdivide_points(polygon)
-                    points.extend(subdivide_points)
-                    subdivide_points = get_subdivide_points(polygon, include_self=True)
+                    points.extend(get_subdivide_points(polygon))
 
             mapping['goals_2D'] = np.array(points)
 

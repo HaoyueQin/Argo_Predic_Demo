@@ -15,7 +15,7 @@ DenseTNT 轨迹预测可视化 (v3 — 增强版)
     python visualize_map_v3.py --model model_save_no_ct3/model_save/model.16.bin --scenes 10215
 """
 
-import os, sys, argparse, logging, types, warnings
+import os, sys, argparse, logging, warnings
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -46,13 +46,8 @@ from argoverse.map_representation.map_api import ArgoverseMap
 import utils
 from modeling.vectornet import VectorNet
 
-# ── Monkey-patch missing Cython function ──
-try:
-    import utils_cython
-except ImportError:
-    utils_cython = types.ModuleType("utils_cython")
-    sys.modules["utils_cython"] = utils_cython
-utils_cython.speed_scale_factor = lambda speed: max(0.5, min(3.0, 1.0 + speed / 10.0))
+# speed_scale_factor 已由 utils.py 提供（utils_cython 上游缺口已在 utils 侧修复，
+# 见 utils.speed_scale_factor），此处无需 monkey-patch。
 
 
 # ═══════════════════════════════════════════════════════════════════════════
