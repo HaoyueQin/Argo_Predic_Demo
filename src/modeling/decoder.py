@@ -477,18 +477,18 @@ class Decoder(nn.Module):
                 if 'set_predict-one_encoder' in args.other_params:
                     encoder = self.set_predict_encoders[0]
 
-                if True:
-                    if 'set_predict-one_encoder' in args.other_params and k > 0:
-                        pass
-                    else:
-                        encoding = encoder(points_feature.unsqueeze(0)).squeeze(0)
+                # set_predict-one_encoder: all heads share encoders[0]; k>0 reuses
+                # the encoding computed at k==0 (identical input → identical output,
+                # skipping 5 redundant forward passes).
+                if k == 0 or 'set_predict-one_encoder' not in args.other_params:
+                    encoding = encoder(points_feature.unsqueeze(0)).squeeze(0)
 
-                    decoding = decoder(torch.cat([torch.max(encoding, dim=0)[0], torch.mean(encoding, dim=0)], dim=-1)).view([13])
-                    group_scores[k] = decoding[0]
-                    predict = decoding[1:].view([6, 2])
+                decoding = decoder(torch.cat([torch.max(encoding, dim=0)[0], torch.mean(encoding, dim=0)], dim=-1)).view([13])
+                group_scores[k] = decoding[0]
+                predict = decoding[1:].view([6, 2])
 
-                    predict[:, 0] += goals_2D[max_point_idx, 0]
-                    predict[:, 1] += goals_2D[max_point_idx, 1]
+                predict[:, 0] += goals_2D[max_point_idx, 0]
+                predict[:, 1] += goals_2D[max_point_idx, 1]
 
                 predicts.append(predict)
 

@@ -18,6 +18,7 @@
 # ==============================================================================
 
 import copy
+import json
 import math
 import multiprocessing
 import os
@@ -507,13 +508,46 @@ def _collect_csv_files(data_dir):
     return sorted(files)
 
 
-def _data_signature(files):
-    """数据指纹：文件总数与首尾文件名，用于缓存复用校验。
+def _args_signature(args):
+    """预处理参数指纹：影响缓存内容的参数（--other_params / --use_map /
+    --hidden_size / --future_frame_num 等）变化时强制重建缓存，防止静默
+    复用错误数据（例如用不同 other_params 跑同一数据目录）。
+
+    do_test/do_eval 不参与指纹：训练/评估缓存已按目录隔离
+    （temp_file vs get_eval_temp_dir）。
+    """
+    op = args.other_params
+    # 兼容两种形式：CLI 为 list（'k=v' 字符串），脚本构造为 dict（{k: v}）。
+    # 统一规范化为 'k=v' 字符串集合，顺序无关；跨形式的纯 flag（无值）写法
+    # 签名不同（宁可重建缓存，不可错用数据）。
+    if isinstance(op, dict):
+        op = sorted('{0}={1}'.format(k, v) for k, v in op.items())
+    else:
+        op = sorted(str(e) for e in op)
+    relevant = {
+        # getattr 默认 None：容忍最小 args（防御），正常路径字段必然存在
+        'hidden_size': getattr(args, 'hidden_size', None),
+        'max_distance': getattr(args, 'max_distance', None),
+        'not_use_api': getattr(args, 'not_use_api', None),
+        'no_agents': getattr(args, 'no_agents', None),
+        'use_map': getattr(args, 'use_map', None),
+        'visualize': getattr(args, 'visualize', None),
+        'future_frame_num': getattr(args, 'future_frame_num', None),
+        'other_params': op,
+    }
+    return json.dumps(relevant, sort_keys=True)
+
+
+def _data_signature(files, args=None):
+    """数据指纹：文件总数与首尾文件名 + 预处理参数指纹，用于缓存复用校验。
 
     文件数相同但内容不同（同目录换数据集）时首尾文件名大概率变化；
     如需更强校验可扩展为完整文件清单哈希。
     """
-    return (len(files), files[0] if files else None, files[-1] if files else None)
+    sig = (len(files), files[0] if files else None, files[-1] if files else None)
+    if args is not None:
+        sig = (sig, _args_signature(args))
+    return sig
 
 
 def _cache_matches(cache_data, current_sig):
@@ -556,7 +590,7 @@ class Dataset(torch.utils.data.Dataset):
         # 当前数据文件清单与签名：加载分支用于校验缓存是否仍匹配，
         # 重建分支直接复用该清单处理文件。
         files = _collect_csv_files(data_dir)
-        current_sig = _data_signature(files)
+        current_sig = _data_signature(files, args)
 
         if args.reuse_temp_file and not force_rebuild:
             # Explicit reuse: load from pickle; fall back to rebuilding if the

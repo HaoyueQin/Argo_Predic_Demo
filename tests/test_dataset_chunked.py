@@ -113,6 +113,14 @@ def _make_args(tmp_path, csv_names, reuse=True, do_eval=False, core_num=1):
         do_test=False,
         debug=False,
         other_params=dict(),
+        # 缓存签名相关字段（与 utils.add_argument 默认值一致）
+        hidden_size=128,
+        max_distance=50.0,
+        not_use_api=False,
+        no_agents=False,
+        use_map=True,
+        visualize=False,
+        future_frame_num=30,
     ), data_dir, temp_dir
 
 
@@ -137,6 +145,40 @@ class TestCacheHelpers:
         assert mod._data_signature([]) == (0, None, None)
         sig = mod._data_signature(['/x/a.csv', '/x/b.csv'])
         assert sig == (2, '/x/a.csv', '/x/b.csv')
+
+    def test_args_signature(self, mod):
+        def make_args(**over):
+            base = dict(hidden_size=128, max_distance=50.0, not_use_api=False,
+                        no_agents=False, use_map=True, visualize=False,
+                        future_frame_num=30, other_params=['goals_2D', 'subdivide'])
+            base.update(over)
+            return argparse.Namespace(**base)
+
+        a1 = make_args()
+        # 相同参数（含 other_params 乱序）→ 相同指纹
+        assert mod._args_signature(a1) == mod._args_signature(make_args())
+        assert mod._args_signature(a1) == mod._args_signature(
+            make_args(other_params=['subdivide', 'goals_2D']))
+        # 关键参数变化 → 指纹变化（缓存必须重建）
+        assert mod._args_signature(make_args(use_map=False)) != mod._args_signature(a1)
+        assert mod._args_signature(make_args(other_params=['goals_2D'])) != mod._args_signature(a1)
+        assert mod._args_signature(make_args(hidden_size=256)) != mod._args_signature(a1)
+        assert mod._args_signature(make_args(future_frame_num=60)) != mod._args_signature(a1)
+        # dict 形式与 'k=v' list 形式：带值参数等价
+        assert mod._args_signature(
+            make_args(other_params={'set_predict': 6, 'goals_2D': True})) == \
+            mod._args_signature(make_args(other_params=['set_predict=6', 'goals_2D=True']))
+
+    def test_data_signature_includes_args(self, mod):
+        files = ['/x/a.csv', '/x/b.csv']
+        args_a = argparse.Namespace(hidden_size=128, max_distance=50.0, not_use_api=False,
+                                    no_agents=False, use_map=True, visualize=False,
+                                    future_frame_num=30, other_params=['goals_2D'])
+        args_b = argparse.Namespace(hidden_size=128, max_distance=50.0, not_use_api=False,
+                                    no_agents=False, use_map=False, visualize=False,
+                                    future_frame_num=30, other_params=['goals_2D'])
+        assert mod._data_signature(files, args_a) != mod._data_signature(files, args_b)
+        assert mod._data_signature(files, args_a) == mod._data_signature(files, args_a)
 
     def test_cache_matches_requires_signature(self, mod):
         sig = (2, 'a.csv', 'b.csv')
@@ -167,7 +209,8 @@ class TestDatasetCache:
             with open(cache, 'rb') as f:
                 data = pickle.load(f)
             assert 'data_signature' in data
-            assert data['data_signature'][0] == 2
+            # 新签名 = (文件签名, args 指纹)；文件签名首元素为文件数
+            assert data['data_signature'][0][0] == 2
         finally:
             monkeypatch.undo()
 

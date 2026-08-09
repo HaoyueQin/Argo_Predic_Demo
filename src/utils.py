@@ -22,7 +22,17 @@ from matplotlib.path import Path
 from matplotlib.pyplot import MultipleLocator
 from torch import Tensor
 
-import utils_cython, structs
+import structs
+
+try:
+    import utils_cython  # noqa: F401  (compiled from utils_cython.pyx; see README)
+except ImportError as _cython_err:
+    raise RuntimeError(
+        "utils_cython is not importable (is it compiled?). Run once before "
+        "training/evaluation: cd src && cython -a utils_cython.pyx && "
+        "python setup.py build_ext --inplace (see README for the full "
+        "installation steps). Original error: {0}".format(_cython_err)
+    ) from _cython_err
 
 
 def add_argument(parser):
