@@ -1,144 +1,116 @@
-# DenseTNT
-### [Paper](https://arxiv.org/abs/2108.09640) | [Webpage](https://tsinghua-mars-lab.github.io/DenseTNT/)
-- This is the official implementation of the paper: **DenseTNT: End-to-end Trajectory Prediction from Dense Goal Sets** (ICCV 2021).
-- **DenseTNT v1.0** was released in November 1st, 2021.
-- Updates: 
-  - July 25th, 2022: Add detailed code comments.
+# Argo_Predic_Demo
 
-## Quick Start
+Trajectory prediction on the **Argoverse 1** motion forecasting dataset — a
+reproduction of **DenseTNT** (Gu et al., ICCV 2021) with training/validation
+tooling, plus rule-based and learning-based baselines (Kalman filter, constant
+velocity, LSTM) for comparison.
 
-Requires:
+## Methods
 
-* Python ≥ 3.6
-* PyTorch ≥ 1.6
+| Method | Type | minADE (m) | minFDE (m) | MR @2m |
+|--------|------|:----------:|:----------:|:------:|
+| CV (constant velocity) | Rule baseline | ~5.0 | ~10.0 | ~80% |
+| Kalman filter | Rule baseline | 2.26 | 5.15 | ~50% |
+| LSTM | Learning baseline | 1.99 | 4.60 | ~35% |
+| **DenseTNT (ours)** | VectorNet + map (6 modes) | **1.20** | **2.09** | 30.0% |
+| DenseTNT + goal optimization | VectorNet + map | **0.94** | **1.35** | **8.4%** |
 
-### 1) Install Packages
+Metrics are computed on the Argoverse 1.1 validation split (39,472 scenes).
+The DenseTNT model was trained on a 60k subset (16 epochs); see
+`outputs/charts/report_analysis.md` for details. Chinese version: [README-zh.md](README-zh.md).
 
-``` bash
- pip install -r requirements.txt
+## Repository layout
+
+```
+├── src/                        # DenseTNT training code (upstream + modifications)
+│   ├── train_v4.py             # Main training entry (epoch loop, LR decay,
+│   │                           #   inline validation, --resume)
+│   ├── dataset_argoverse_chunked.py  # Disk-cached dataset (avoids OOM on 205k files)
+│   ├── run.py                  # Upstream entry + resume/batch-size patches
+│   ├── dataset_argoverse.py    # Upstream dataset + Pool deadlock fix
+│   ├── do_eval.py / utils.py / structs.py / setup.py / utils_cython.pyx
+│   └── modeling/               # vectornet.py / decoder.py / lib.py
+├── eval_all_models.py          # Batch-evaluate all epoch checkpoints
+├── eval_single.py              # Evaluate a single checkpoint
+├── dashboard.py                # Training monitoring web UI (port 8080)
+├── watchdog.sh                 # Crash-restart watchdog for training
+├── mk50k.sh                    # Create an N-sample training subset (symlinks)
+├── models/                     # Own baselines: rule_based/, learning_based/,
+│                               #   loss_common/, metrics_common/
+├── scripts/                    # Preprocessing, evaluation, visualization, demo
+├── notebooks/                  # Jupyter demo (CV vs Kalman vs LSTM)
+├── docs/                       # Technical documentation (Chinese)
+├── outputs/                    # Evaluation charts and reports
+└── argoverse-api/              # Argoverse API (upstream repo, full git history)
 ```
 
-### 2) Install Argoverse API
-The latest version of Argoverse requires Python ≥ 3.7
+## Data
 
-If using Python 3.6, you can install Argoverse v1.0 
+Download the **Argoverse 1** motion forecasting dataset:
 
-https://github.com/argoai/argoverse-api
+- Official: <https://www.argoverse.org/av1.html> (train ~205k scenes, val ~39k scenes)
+- HD maps are included in the Argoverse API repo under `map_files/`
+  (`argoverse-api/argoverse/utils/` loader expects `ARGOVERSE_MAP_DIR`)
 
-### 3) Compile Cython
-Compile a .pyx file into a C file using Cython (already installed at step 1):
+The raw data is **not** stored in this repository. Expected layout:
 
-
-⚠️*Recompiling is needed every time the pyx files are changed.*
-``` bash
-cd src/ && cython -a utils_cython.pyx && python setup.py build_ext --inplace && cd ../
+```
+data/raw/
+├── train/data/*.csv            # training scenes
+├── val/data/*.csv              # validation scenes
+└── argoverse_data/map_files/   # HD maps
 ```
 
-## Performance
+## Environment
 
-Results on Argoverse motion forecasting validation set:
-
-<table class="tg">
-<thead>
-  <tr>
-    <th class="tg-0pky"></th>
-    <th class="tg-c3ow">minADE</th>
-    <th class="tg-c3ow">minFDE</th>
-    <th class="tg-c3ow">Miss Rate</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td class="tg-0pky">DenseTNT w/ 100ms optimization (Miss Rate)</td>
-    <td class="tg-c3ow">0.80</td>
-    <td class="tg-c3ow">1.27</td>
-    <td class="tg-c3ow">7.0%</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">DenseTNT w/ 100ms optimization (minFDE)</td>
-    <td class="tg-c3ow">0.73</td>
-    <td class="tg-c3ow">1.05</td>
-    <td class="tg-c3ow">9.8%</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">DenseTNT w/ goal set predictor (Miss Rate)</td>
-    <td class="tg-c3ow">0.82</td>
-    <td class="tg-c3ow">1.37</td>
-    <td class="tg-c3ow">7.0%</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">DenseTNT w/ goal set predictor (minFDE)</td>
-    <td class="tg-c3ow">0.75</td>
-    <td class="tg-c3ow">1.05</td>
-    <td class="tg-c3ow">9.7%</td>
-  </tr>
-</tbody>
-</table>
-
-A miss rate between 6.9% and 7.1% is considered reasonable. 
-A minFDE between 1.05 and 1.06 is considered reasonable. 
-
-## DenseTNT
-
-### 1) Train
-Suppose the training data of Argoverse motion forecasting is at ```./train/data/```.
 ```bash
-OUTPUT_DIR=models.densetnt.1; \
-GPU_NUM=8; \
-python src/run.py --argoverse --future_frame_num 30 \
-  --do_train --data_dir train/data/ --output_dir ${OUTPUT_DIR} \
-  --hidden_size 128 --train_batch_size 64 --use_map \
-  --core_num 16 --use_centerline --distributed_training ${GPU_NUM} \
-  --other_params \
-    semantic_lane direction l1_loss \
-    goals_2D enhance_global_graph subdivide goal_scoring laneGCN point_sub_graph \
-    lane_scoring complete_traj complete_traj-3 \
+pip install -r requirements_densetnt.txt   # training env (torch, numpy, cython, ...)
+cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
 ```
-Training takes 20 minutes per epoch and 5 hours for the default 16 epochs on 8 × 2080Ti. 
 
-### 2) Evaluate
-Suppose the validation data of Argoverse motion forecasting is at ```./val/data/```.
+Training requires a CUDA GPU (tested on 6 GB VRAM laptop GPU, WSL2 recommended).
+Run the demo notebook (`notebooks/Trajectory_Prediction_Demo.ipynb`) or
+`python scripts/enhanced_demo.py --data-dir data/raw` for the baselines.
 
-* Optimize Miss Rate:
-  - Add ```--do_eval --eval_params optimization MRminFDE cnt_sample=9 opti_time=0.1``` to the end of the training command.
+## Train & evaluate DenseTNT
 
-* Optimize minFDE: 
-  - Add ```--do_eval --eval_params optimization MRminFDE=0.0 cnt_sample=9 opti_time=0.1``` to the end of the training command.
-
-
-### 3) Train Set Predictor (Optional)
-Compared with the optimization algorithm (default setting), the set predictor has similar performance but faster inference speed.
-
-
-After training DenseTNT, suppose the model path is at ```models.densetnt.1/model_save/model.16.bin```. The command for training the set predictor is:
 ```bash
-OUTPUT_DIR=models.densetnt.set_predict.1; \
-MODEL_PATH=models.densetnt.1/model_save/model.16.bin; \
-GPU_NUM=8; \
-python src/run.py --argoverse --future_frame_num 30 \
-  --do_train --data_dir train/data/ --output_dir ${OUTPUT_DIR} \
-  --hidden_size 128 --train_batch_size 64 --use_map \
-  --core_num 16 --use_centerline --distributed_training ${GPU_NUM} \
-  --other_params \
-    semantic_lane direction l1_loss \
-    goals_2D enhance_global_graph subdivide goal_scoring laneGCN point_sub_graph \
-    lane_scoring complete_traj \
-    set_predict=6 set_predict-6 data_ratio_per_epoch=0.4 set_predict-topk=0 set_predict-one_encoder set_predict-MRratio=1.0 \
-    set_predict-train_recover=${MODEL_PATH} \
+# 1) Prepare data (or use mk50k.sh to make a subset first)
+python src/train_v4.py --do_train \
+  --data_dir train/data --data_dir_for_val val/data \
+  --output_dir model_save_full_chunked \
+  --train_batch_size 64 --num_train_epochs 16 --patience 5 \
+  --hidden_size 128 --core_num 4 --num_workers 0 \
+  --distributed_training 1 --use_map --use_centerline --argoverse \
+  --other_params semantic_lane direction l1_loss goals_2D \
+    enhance_global_graph subdivide goal_scoring laneGCN \
+    point_sub_graph lane_scoring complete_traj complete_traj-3
+
+# resume after interruption
+python src/train_v4.py ... --resume
+
+# 2) Evaluate all saved checkpoints
+python eval_all_models.py
+
+# 3) Monitor training (optional)
+python dashboard.py
 ```
 
-This training command optimizes Miss Rate. To optimize minFDE, change ```set_predict-MRratio=1.0``` in the command to ```set_predict-MRratio=0.0```.
+The validation cache is pre-built in the main process before training starts
+(see `build_validation_cache` in `src/train_v4.py`) — this avoids a known
+`multiprocessing.Pool`-inside-`mp.spawn` failure on the validation set.
 
-To evaluate the set predictor, just add ```--do_eval``` to the end of this training command.
+## Acknowledgements
 
-## Citation
-If you find our work useful for your research, please consider citing the paper:
-```
-@inproceedings{densetnt,
-  title={Densetnt: End-to-end trajectory prediction from dense goal sets},
-  author={Gu, Junru and Sun, Chen and Zhao, Hang},
-  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
-  pages={15303--15312},
-  year={2021}
-}
-```
+- **DenseTNT** code: [Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT),
+  MIT License (Copyright (c) 2024 Tsinghua MARS Lab). This repo keeps the
+  upstream commit history and applies the modifications described above.
+- **Argoverse API**: [argoai/argoverse-api](https://github.com/argoai/argoverse-api),
+  MIT License, merged via `git subtree` with its full history preserved.
+- **Paper**: J. Gu, C. Sun, H. Zhao, "DenseTNT: End-to-end Trajectory Prediction
+  from Dense Goal Sets", ICCV 2021. <https://arxiv.org/abs/2108.09640>
+
+## License
+
+MIT — see [LICENSE](LICENSE). Third-party components retain their own licenses
+(see the LICENSE file for details).

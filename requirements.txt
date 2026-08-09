@@ -1,5 +1,9 @@
-torch>=1.6.0
-cython
-tqdm
-matplotlib
-scipy
+# Demo & baseline models environment (LSTM / Kalman / CV + notebooks)
+# DenseTNT training dependencies: see requirements_densetnt.txt
+torch>=2.0
+numpy>=1.26,<2.0
+scipy>=1.13
+pandas>=2.0
+matplotlib>=3.8
+tqdm>=4.60
+jupyter>=1.0
