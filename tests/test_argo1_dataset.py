@@ -1,0 +1,98 @@
+"""ArgoverseV1Dataset 端到端测试：伪造 CSV → process → 加载验证。
+
+不依赖真实数据与 argoverse-api，仅需 pandas/torch。
+"""
+import os
+
+import numpy as np
+import pytest
+import torch
+
+from scripts.preprocess.argo1_dataset import ArgoverseV1Dataset, process_argoverse
+
+NUM_TIMESTAMPS = 50  # Argoverse 1: 20 历史 + 30 未来
+
+
+def _make_fake_csv(path, seq_id=10001):
+    """生成一个合法的 Argoverse 1 格式 CSV（AV、AGENT、2 个 OTHERS）。"""
+    rows = []
+    # actor: (track_id, object_type, 每帧位移向量)
+    actors = [
+        (1, 'AV', (1.0, 0.0)),
+        (2, 'AGENT', (0.5, 0.5)),
+        (3, 'OTHERS', (0.0, 1.0)),
+        (4, 'OTHERS', (-0.2, 0.3)),
+    ]
+    for t in range(NUM_TIMESTAMPS):
+        for track_id, obj_type, step in actors:
+            x = t * step[0]
+            y = t * step[1]
+            rows.append(f"{track_id},{t},{obj_type},{x:.6f},{y:.6f},PIT")
+    with open(path, 'w') as f:
+        f.write("TRACK_ID,TIMESTAMP,OBJECT_TYPE,X,Y,CITY_NAME\n")
+        f.write("\n".join(rows))
+    return seq_id
+
+
+@pytest.fixture
+def fake_data_dir(tmp_path):
+    raw = tmp_path / "raw"
+    processed = tmp_path / "processed"
+    raw.mkdir(parents=True)
+    processed.mkdir()
+    csv_path = raw / "10001.csv"
+    _make_fake_csv(str(csv_path), seq_id=10001)
+    return str(raw), str(processed)
+
+
+class TestProcessArgoverse:
+    def test_process_creates_pt(self, fake_data_dir):
+        raw_dir, processed_dir = fake_data_dir
+        ds = ArgoverseV1Dataset(os.path.dirname(raw_dir),
+                                raw_dir=raw_dir, processed_dir=processed_dir)
+        assert len(ds.raw_paths) == 1
+        ds.process()
+        pt_files = [f for f in os.listdir(processed_dir) if f.endswith('.pt')]
+        assert pt_files == ['10001.pt']
+
+    def test_sample_tensor_shapes_and_fields(self, fake_data_dir):
+        raw_dir, processed_dir = fake_data_dir
+        ds = ArgoverseV1Dataset(os.path.dirname(raw_dir),
+                                raw_dir=raw_dir, processed_dir=processed_dir)
+        ds.process()
+        sample = ds.get(0)
+        assert sample['seq_id'] == 10001
+        assert sample['x'].shape == (4, 20, 2)   # 4 actors × 20 历史帧
+        assert sample['y'].shape == (4, 30, 2)   # 4 actors × 30 未来帧
+        assert sample['positions'].shape == (4, 50, 2)
+        assert sample['edge_index'].shape[0] == 2
+        assert sample['padding_mask'].shape == (4, 50)
+        assert sample['av_index'] == 0
+        assert sample['agent_index'] == 1
+
+    def test_origin_is_av_last_history_position(self, fake_data_dir):
+        raw_dir, processed_dir = fake_data_dir
+        ds = ArgoverseV1Dataset(os.path.dirname(raw_dir),
+                                raw_dir=raw_dir, processed_dir=processed_dir)
+        ds.process()
+        sample = ds.get(0)
+        # AV 最后历史帧在全局坐标 (19, 0)，原点应等于它
+        np.testing.assert_allclose(sample['origin'].numpy(), [[19.0, 0.0]], atol=1e-4)
+
+    def test_missing_raw_dir_raises(self, tmp_path):
+        with pytest.raises(FileNotFoundError):
+            ArgoverseV1Dataset(str(tmp_path),
+                               raw_dir=str(tmp_path / "nonexistent"),
+                               processed_dir=str(tmp_path / "out"))
+
+
+class TestProcessArgoverseFunction:
+    def test_direct_call(self, tmp_path):
+        csv_path = tmp_path / "42.csv"
+        _make_fake_csv(str(csv_path), seq_id=42)
+        out = process_argoverse(str(csv_path))
+        assert out['seq_id'] == 42
+        assert out['x'].shape == (4, 20, 2)
+        assert out['y'].shape == (4, 30, 2)
+        # AV 的速度方向被旋转到 x 轴：theta 应为 0（AV 沿 x 轴运动）
+        assert abs(out['theta'].item()) < 1e-6

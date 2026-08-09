@@ -26,7 +26,6 @@ train_v4.py — DenseTNT 训练脚本 v4.0
     --patience 5 \
     --checkpoint_interval 100 \
     --learning_rate 0.001 \
-    --lr_decay_epoch 5 \
     --core_num 4 \
     --num_workers 0 \
     --distributed_training 1 \
@@ -259,7 +258,7 @@ def do_validate(args, epoch, model_save_dir, model):
 
     # 推理 — must patch args.do_eval/do_train because decoder uses module-level global args
     raw_model.eval()
-    file2pred, file2labels, DEs = {}, {}, []
+    file2pred, file2labels = {}, {}
 
     _saved_do_eval = args.do_eval
     _saved_do_train = args.do_train
@@ -276,25 +275,15 @@ def do_validate(args, epoch, model_save_dir, model):
                     fid = int(os.path.split(mapping[i]['file_name'])[1][:-4])
                     file2pred[fid] = pred_trajectory[i]
                     file2labels[fid] = mapping[i]['origin_labels']
-
-                DE = np.zeros([bs, args.future_frame_num])
-                for i in range(bs):
-                    ol = mapping[i]['origin_labels']
-                    for j in range(args.future_frame_num):
-                        DE[i][j] = np.sqrt(
-                            (ol[j][0] - pred_trajectory[i, 0, j, 0])**2 +
-                            (ol[j][1] - pred_trajectory[i, 0, j, 1])**2
-                        )
-                DEs.append(DE)
     finally:
         args.do_eval = _saved_do_eval
         args.do_train = _saved_do_train
+        raw_model.train()
 
     # 计算指标
     from argoverse.evaluation import eval_forecasting
     mr = eval_forecasting.get_displacement_errors_and_miss_rate(
-        file2pred, file2labels, 6, 30, 2.0)
-    raw_model.train()
+        file2pred, file2labels, 6, args.future_frame_num, 2.0)
 
     minADE = mr.get('minADE', float('nan'))
     minFDE = mr.get('minFDE', float('nan'))

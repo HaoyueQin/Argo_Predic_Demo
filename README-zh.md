@@ -96,6 +96,15 @@ python dashboard.py
 `build_validation_cache`）——这避免了 `mp.spawn` 子进程内 `multiprocessing.Pool`
 处理验证集全部失败的已知问题。
 
+## 测试
+
+单元测试覆盖基线模型、损失/指标函数与 Argoverse CSV 预处理（无需 GPU 和真实数据）：
+
+```bash
+pip install pytest
+python -m pytest tests/ -v
+```
+
 ## 致谢
 
 - **DenseTNT 代码**：[Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT)，

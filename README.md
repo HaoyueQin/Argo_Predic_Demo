@@ -100,6 +100,16 @@ The validation cache is pre-built in the main process before training starts
 (see `build_validation_cache` in `src/train_v4.py`) — this avoids a known
 `multiprocessing.Pool`-inside-`mp.spawn` failure on the validation set.
 
+## Tests
+
+Unit tests cover the baseline models, loss/metrics and the Argoverse CSV
+preprocessor (no GPU or real data required):
+
+```bash
+pip install pytest
+python -m pytest tests/ -v
+```
+
 ## Acknowledgements
 
 - **DenseTNT** code: [Tsinghua-MARS-Lab/DenseTNT](https://github.com/Tsinghua-MARS-Lab/DenseTNT),

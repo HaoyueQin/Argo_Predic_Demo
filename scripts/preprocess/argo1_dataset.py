@@ -1,6 +1,5 @@
 import os
 from itertools import permutations
-from itertools import product
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
@@ -22,7 +21,7 @@ class ArgoverseV1Dataset:
             )
         self._raw_file_names = sorted([f for f in os.listdir(self._raw_dir) if f.endswith('.csv')])
         self._processed_file_names = [os.path.splitext(f)[0] + '.pt' for f in self._raw_file_names]
-        self._processed_paths = [os.path.join(self.processed_dir, f) for f in self._processed_file_names]
+        self._processed_paths = [os.path.join(self._processed_dir, f) for f in self._processed_file_names]
 
     @property
     def raw_dir(self) -> str:
@@ -56,7 +55,7 @@ class ArgoverseV1Dataset:
         return len(self._raw_file_names)
 
     def get(self, idx):
-        return torch.load(self.processed_paths[idx])
+        return torch.load(self.processed_paths[idx], weights_only=False)
 
 
 def process_argoverse(raw_path: str,) -> Dict:
@@ -110,13 +109,6 @@ def process_argoverse(raw_path: str,) -> Dict:
     bos_mask[:, 1: 20] = padding_mask[:, : 19] & ~padding_mask[:, 1: 20]
 
     positions = x.clone()
-    # x[:, 20:] = torch.where((padding_mask[:, 19].unsqueeze(-1) | padding_mask[:, 20:]).unsqueeze(-1),
-    #                         torch.zeros(num_nodes, 30, 2),
-    #                         x[:, 20:] - x[:, 19].unsqueeze(-2))
-    # x[:, 1: 20] = torch.where((padding_mask[:, : 19] | padding_mask[:, 1: 20]).unsqueeze(-1),
-    #                           torch.zeros(num_nodes, 19, 2),
-    #                           x[:, 1: 20] - x[:, : 19])
-    # x[:, 0] = torch.zeros(num_nodes, 2)
 
     y = x[:, 20:]
     seq_id = os.path.splitext(os.path.basename(raw_path))[0]
