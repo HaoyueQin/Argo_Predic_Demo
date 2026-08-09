@@ -9,13 +9,17 @@ velocity, LSTM) for comparison.
 
 | Method | Type | minADE (m) | minFDE (m) | MR @2m |
 |--------|------|:----------:|:----------:|:------:|
-| CV (constant velocity) | Rule baseline | ~5.0 | ~10.0 | ~80% |
-| Kalman filter | Rule baseline | 2.26 | 5.15 | ~50% |
-| LSTM | Learning baseline | 1.99 | 4.60 | ~35% |
-| **DenseTNT (ours)** | VectorNet + map (6 modes) | **1.20** | **2.09** | 30.0% |
-| DenseTNT + goal optimization | VectorNet + map | **0.94** | **1.35** | **8.4%** |
+| CV (constant velocity) | Rule baseline | ~5.0¹ | ~10.0¹ | ~80%¹ |
+| Kalman filter | Rule baseline | 2.26² | 5.15² | ~50%² |
+| LSTM | Learning baseline | 1.99² | 4.60² | ~35%² |
+| **DenseTNT (ours)** | VectorNet + map (6 modes) | **1.20³** | **2.09³** | 30.0%³ |
+| DenseTNT + goal optimization | VectorNet + map | **0.94³** | **1.35³** | **8.4%³** |
 
-Metrics are computed on the Argoverse 1.1 validation split (39,472 scenes).
+¹ CV 为量级参考的近似值（无全量实测）。
+² Kalman / LSTM 在 300 样本子集上评估（规则/学习基线对比用）。
+³ DenseTNT 两行在 Argoverse 1.1 全量验证集（39,472 场景）上评估。
+**不同口径的行不可直接对比**；详见 `docs/多方法对比分析报告.md` 的评估口径说明。
+
 The DenseTNT model was trained on a 60k subset (16 epochs); see
 `outputs/charts/report_analysis.md` for details. Chinese version: [README-zh.md](README-zh.md).
 
@@ -35,6 +39,9 @@ The DenseTNT model was trained on a 60k subset (16 epochs); see
 ├── dashboard.py                # Training monitoring web UI (port 8080)
 ├── watchdog.sh                 # Crash-restart watchdog for training
 ├── mk50k.sh                    # Create an N-sample training subset (symlinks)
+├── scripts/eval/eval_optimization.py  # Reproduce the goal-optimization results
+│                                   #   (baseline vs optimization, see docs/
+│                                   #   OPTIMIZATION_VERIFICATION_REPORT.md)
 ├── models/                     # Own baselines: rule_based/, learning_based/,
 │                               #   loss_common/, metrics_common/
 ├── scripts/                    # Preprocessing, evaluation, visualization, demo

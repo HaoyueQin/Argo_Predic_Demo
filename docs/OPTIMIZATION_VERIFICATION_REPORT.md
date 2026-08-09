@@ -1,8 +1,11 @@
 # DenseTNT Optimization 后处理验证报告
 
-> 注：本报告的验证脚本 `eval_optimization.py` 为开发期临时工具，未包含在公开仓库中；
-> 指标数据已固化于 `outputs/eval_output/optimization_comparison.json`，复现方法见 README
-> （训练 → `eval_all_models.py` 评估）。
+> 注：本报告的验证脚本 `eval_optimization.py` 已适配并加入公开仓库
+> （`scripts/eval/eval_optimization.py`），指标数据固化于
+> `outputs/eval_output/optimization_comparison.json`；复现方法：训练 →
+> `eval_all_models.py` 评估 → `python scripts/eval/eval_optimization.py`。
+> 原始全量运行日志（`baseline_full.log` / `optimization_full.log`）未随仓库发布，
+> 指标结果可直接由脚本重新生成。
 
 ## 1. 概述
 
@@ -138,20 +141,18 @@ Cython 函数 `get_value`（`utils_cython.pyx:138`）计算给定 6 个候选终
 
 | 文件 | 路径 | 说明 |
 |:----|:----|:----|
-| 验证脚本 | `eval_optimization.py` (411 行) | 独立验证脚本，包含完整的 Baseline/Optimization 双模式对比流程 |
-| Optimization 调度 | `src/utils.py:1309-1354, 1359-1430` | `run_process` 将任务派发给 Cython 子进程; `select_goals_by_optimization` 管理多进程池和 8 次运行 |
-| Cython 优化核心 | `src/utils_cython.pyx:138-257` | `get_value`（目标函数计算）+ `_get_optimal_targets`（模拟退火） |
-| 编译产物 | `src/utils_cython.cpython-312-x86_64-linux-gnu.so` | 编译后的 Cython 扩展（Linux x86_64, Python 3.12） |
-| 解码器 args 同步 | `src/modeling/decoder.py:43-44` | `global args; args = args_` 模块级 args |
-| VectorNet args 同步 | `src/modeling/vectornet.py:66-67` | 同上，`global args` |
-| 结果文件 | `eval_output/optimization_comparison.json` | 包含 Baseline + Optimization 完整对比数据 |
+| 验证脚本 | `scripts/eval/eval_optimization.py` | 独立验证脚本，包含完整的 Baseline/Optimization 双模式对比流程 |
+| Optimization 调度 | `src/utils.py` `run_process` / `select_goals_by_optimization` | `run_process` 将任务派发给 Cython 子进程; `select_goals_by_optimization` 管理多进程池和 8 次运行 |
+| Cython 优化核心 | `src/utils_cython.pyx` `get_value` / `_get_optimal_targets` | `get_value`（目标函数计算）+ `_get_optimal_targets`（模拟退火） |
+| 编译产物 | `src/utils_cython.*.so` / `.pyd` | 编译后的 Cython 扩展（随环境生成，不入库；编译方法见 README） |
+| 解码器 args 同步 | `src/modeling/decoder.py` `Decoder.__init__` | `global args; args = args_` 模块级 args |
+| VectorNet args 同步 | `src/modeling/vectornet.py` `VectorNet.__init__` | 同上，`global args` |
+| 结果文件 | `outputs/eval_output/optimization_comparison.json` | 包含 Baseline + Optimization 完整对比数据 |
 
 ### 3.2 运行日志
 
-| 日志文件 | 内容 |
-|:---------|:-----|
-| `eval_output/baseline_full.log` | Baseline 全量运行日志（39,472 场景，841s） |
-| `eval_output/optimization_full.log` | Optimization 全量运行日志（39,472 场景，7,618s） |
+原始全量运行日志（`baseline_full.log` / `optimization_full.log`，开发期产物）未随仓库
+发布；指标结果可由 `scripts/eval/eval_optimization.py` 直接重新生成。
 
 ---
 
@@ -159,7 +160,7 @@ Cython 函数 `get_value`（`utils_cython.pyx:138`）计算给定 6 个候选终
 
 ### Bug 1: 模块级 `global args` 未同步
 
-**位置**: `decoder.py:43`, `vectornet.py:66`
+**位置**: `decoder.py` `Decoder.__init__`、`vectornet.py` `VectorNet.__init__`
 
 ```
 def __init__(self, args_: utils.Args):
@@ -169,28 +170,20 @@ def __init__(self, args_: utils.Args):
 
 `decoder.py` 和 `vectornet.py` 各自维护独立的模块级 `global args` 变量，通过 `import modeling.decoder as _decoder_mod; _decoder_mod.args` 访问。仅修改 `utils.args` 不会影响 Decoder/VectorNet 运行时行为。
 
-**修复**（`eval_optimization.py:351-352, 367-368`）:
+**修复**（`scripts/eval/eval_optimization.py` 的 baseline/optimization 两个 pass 中）:
 
 ```python
-_decoder_mod.args = opt_args
-_vectornet_mod.args = opt_args
+_decoder_mod.args = args
+_vectornet_mod.args = args
 ```
 
 ### Bug 2: Cython `cnt_sample != square` 断言
 
-**位置**: `utils_cython.pyx:138-141`
+**位置**: `utils_cython.pyx` `get_value`（`cnt_len == 0` 时）
 
-```
-for i in range(100):
-    if i * i == cnt_sample:
-        cnt_len = i
-if cnt_len == 0:
-    assert False, 'cnt_sample != square'
-```
+`get_value` 需要在 6x6 亚格点网格上采样，要求 `cnt_sample` 为完全平方数。默认值 `cnt_sample=2` 不是完全平方数，导致断言失败（当前 pyx 已改为抛出带说明的 `ValueError`）。
 
-`get_value` 需要在 6x6 亚格点网格上采样，要求 `cnt_sample` 为完全平方数。默认值 `cnt_sample=2` 不是完全平方数，导致断言失败。
-
-**修复**（`eval_optimization.py:147`）:
+**修复**（`scripts/eval/eval_optimization.py` `make_args`）:
 
 ```python
 a.other_params['cnt_sample'] = 36  # 6² = 36
@@ -198,7 +191,7 @@ a.other_params['cnt_sample'] = 36  # 6² = 36
 
 ### Bug 3: `MRratio` UnboundLocalError
 
-**位置**: `utils.py:1333-1335, 1339-1345`
+**位置**: `src/utils.py` `run_process`
 
 ```python
 if 'MRminFDE' in args.other_params:
@@ -215,11 +208,11 @@ if 'cnt_sample' in args.other_params:
 
 当 `cnt_sample` 加入 `other_params` 但 `MRminFDE` 未同时加入时，`MRratio` 变量未定义。
 
-**修复**（`eval_optimization.py:148`）:
-
-```python
-a.other_params['MRminFDE'] = 1.0  # 同时设置 MRminFDE
-```
+**修复**：已合入公开仓库 `src/utils.py`——`run_process` 中无条件初始化
+`MRratio = 1.0`（纯 MR 目标），`'MRminFDE'` 存在时按参数覆盖。任何调用方
+（含 `--other_params optimization cnt_sample=36`）不再依赖外部设置 `MRminFDE`。
+`scripts/eval/eval_optimization.py` 仍显式设置 `MRminFDE=1.0` 以与历史评估
+配置保持一致。
 
 ---
 
@@ -239,8 +232,9 @@ a.other_params['MRminFDE'] = 1.0  # 同时设置 MRminFDE
 ### 依赖安装
 
 ```bash
-pip install --break-system-packages 'numpy<2' torch pandas tqdm matplotlib scipy opencv-python-headless shapely descartes colour imageio omegaconf hydra-core
-export PYTHONPATH=$PYTHONPATH:/path/to/argoverse-api-master
+pip install -r requirements_densetnt.txt          # 见 README
+pip install -e argoverse-api/ --no-deps           # vendored Argoverse API
+cd src && cython -a utils_cython.pyx && python setup.py build_ext --inplace
 ```
 
 ---
@@ -250,23 +244,19 @@ export PYTHONPATH=$PYTHONPATH:/path/to/argoverse-api-master
 ### 6.1 全量对比（两者都跑）
 
 ```bash
-cd /path/to/Argo_Predic_Demo
-PYTHONPATH=/path/to/argoverse-api-master \\
-python3 eval_optimization.py --reuse-cache
+python scripts/eval/eval_optimization.py
 ```
 
 ### 6.2 只跑 Optimization（复用 Baseline 缓存）
 
 ```bash
-PYTHONPATH=/path/to/argoverse-api-master \\
-python3 eval_optimization.py --optim-only --reuse-cache
+python scripts/eval/eval_optimization.py --optim-only --reuse-cache
 ```
 
 ### 6.3 限制场景数（快速验证）
 
 ```bash
-PYTHONPATH=/path/to/argoverse-api-master \\
-python3 eval_optimization.py --max-scenes 2000
+python scripts/eval/eval_optimization.py --max-scenes 2000
 ```
 
 ### 6.4 参数说明
@@ -277,6 +267,8 @@ python3 eval_optimization.py --max-scenes 2000
 | `--baseline-only` | False | 只跑 NMS top-k |
 | `--optim-only` | False | 只跑 Optimization |
 | `--reuse-cache` | False | 复用已缓存的 temp_file（跳过预处理） |
+| `--model` | `model_save_full_chunked/model_save/model.16.bin` | 模型检查点路径 |
+| `--data-dir` | `val/data` | 验证集数据目录 |
 
 ---
 
@@ -332,7 +324,8 @@ Optimization 慢的原因：
 在 `utils.py` 的 `run_process` 中，需要在 `args.other_params` 中包含：
 - `'optimization'` → 触发调用 `select_goals_by_optimization`
 - `'cnt_sample'` → 传入 Cython 的采样网格大小（必须为完全平方数）
-- `'MRminFDE'` → 定义 `MRratio`
+- `'MRminFDE'` (可选) → 定义 `MRratio`（缺省时默认为 1.0，即纯 MR 目标；
+  该默认值已合入 `src/utils.py`，见第 4 节 Bug 3）
 - `'opti_time'` (可选) → 每个优化调用的 CPU 时间上限（默认 10000s，不触发 Cython 的 `num_step` 覆盖）
 
 ### 9.2 Cython 编译注意事项

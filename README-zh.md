@@ -8,14 +8,18 @@
 
 | 方法 | 类型 | minADE (m) | minFDE (m) | MR @2m |
 |------|------|:----------:|:----------:|:------:|
-| CV（匀速模型） | 规则基线 | ~5.0 | ~10.0 | ~80% |
-| 卡尔曼滤波 | 规则基线 | 2.26 | 5.15 | ~50% |
-| LSTM | 学习基线 | 1.99 | 4.60 | ~35% |
-| **DenseTNT（本项目）** | VectorNet + 地图（6 模态） | **1.20** | **2.09** | 30.0% |
-| DenseTNT + 目标优化 | VectorNet + 地图 | **0.94** | **1.35** | **8.4%** |
+| CV（匀速模型） | 规则基线 | ~5.0¹ | ~10.0¹ | ~80%¹ |
+| 卡尔曼滤波 | 规则基线 | 2.26² | 5.15² | ~50%² |
+| LSTM | 学习基线 | 1.99² | 4.60² | ~35%² |
+| **DenseTNT（本项目）** | VectorNet + 地图（6 模态） | **1.20³** | **2.09³** | 30.0%³ |
+| DenseTNT + 目标优化 | VectorNet + 地图 | **0.94³** | **1.35³** | **8.4%³** |
 
-指标在 Argoverse 1.1 验证集（39,472 场景）上计算。DenseTNT 模型在 60k 子集上
-训练 16 个 epoch；详见 `outputs/charts/report_analysis.md`。
+¹ CV 为量级参考的近似值（无全量实测）。
+² 卡尔曼 / LSTM 在 300 样本子集上评估（规则/学习基线对比用）。
+³ DenseTNT 两行在 Argoverse 1.1 全量验证集（39,472 场景）上评估。
+**不同口径的行不可直接对比**；详见 `docs/多方法对比分析报告.md` 的评估口径说明。
+
+DenseTNT 模型在 60k 子集上训练 16 个 epoch；详见 `outputs/charts/report_analysis.md`。
 
 ## 仓库结构
 
@@ -32,6 +36,8 @@
 ├── dashboard.py                # 训练监控 Web 界面（端口 8080）
 ├── watchdog.sh                 # 训练崩溃自动重启看门狗
 ├── mk50k.sh                    # 创建 N 条样本的训练子集（symlink）
+├── scripts/eval/eval_optimization.py  # 复现目标优化结果（baseline vs optimization，
+│                                   #   见 docs/OPTIMIZATION_VERIFICATION_REPORT.md）
 ├── models/                     # 自写基线：rule_based/、learning_based/、loss_common/、metrics_common/
 ├── scripts/                    # 预处理、评估、可视化、演示脚本
 ├── notebooks/                  # Jupyter 演示（CV vs Kalman vs LSTM）
