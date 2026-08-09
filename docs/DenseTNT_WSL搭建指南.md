@@ -138,11 +138,13 @@ pip install tqdm matplotlib scipy cython
 
 ### Step 3.2：安装 Argoverse API
 
-本仓库已自带 Argoverse API（`argoverse-api/` 目录，保留上游完整 git 历史），直接本地安装即可：
+本仓库已自带 Argoverse API（`argoverse-api/` 目录，保留上游完整 git 历史），直接本地安装即可。
+注意必须加 `--no-deps`：上游 `setup.py` pin 的旧版本依赖（numpy 1.19 等）会与
+`requirements_densetnt.txt` 冲突，跳过依赖解析、只安装包本体（依赖由 requirements 补齐）：
 
 ```bash
 cd <project_root>
-pip install -e argoverse-api
+pip install -e argoverse-api --no-deps
 ```
 
 验证：

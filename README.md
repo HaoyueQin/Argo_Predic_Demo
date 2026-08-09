@@ -145,9 +145,10 @@ python -m pytest tests/ -v
   released by Argo AI under the MIT License (Apache-2.0 retained on
   `vis_mask.py`, `colormap.py`, `cuboid_interior.py`), merged into
   `argoverse-api/` with its full commit history preserved (authorship intact).
-  Three files carry local robustness fixes only (`competition_util.py`,
+  Three files carry local fixes only (`competition_util.py`,
   `eval_forecasting.py`, `map_api.py` — zero-division / negative-index /
-  missing-forecast guards); all other vendored files are pristine upstream.
+  missing-forecast guards, plus a convex-hull polygon correction in
+  `competition_util.py`); all other vendored files are pristine upstream.
 - **Paper**: J. Gu, C. Sun, H. Zhao, "DenseTNT: End-to-end Trajectory Prediction
   from Dense Goal Sets", ICCV 2021. <https://arxiv.org/abs/2108.09640>
 

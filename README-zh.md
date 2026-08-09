@@ -128,7 +128,8 @@ python -m pytest tests/ -v
   Argo AI 以 MIT License 发布（`vis_mask.py`、`colormap.py`、`cuboid_interior.py`
   保留 Apache-2.0），合入 `argoverse-api/` 目录并保留完整提交历史（作者署名
   保留）。其中仅 3 个文件（`competition_util.py`、`eval_forecasting.py`、
-  `map_api.py`）带本地健壮性修复（除零/负索引/缺预测防护），其余全部与上游一致。
+  `map_api.py`）带本地修复（除零/负索引/缺预测防护，以及
+  `competition_util.py` 中凸包多边形顶点构造的几何修正），其余全部与上游一致。
 - **论文**：J. Gu, C. Sun, H. Zhao, "DenseTNT: End-to-end Trajectory Prediction
   from Dense Goal Sets", ICCV 2021。 <https://arxiv.org/abs/2108.09640>
 

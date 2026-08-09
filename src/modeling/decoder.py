@@ -216,11 +216,15 @@ class Decoder(nn.Module):
         # There is a lane scoring module (see Section 3.2) in the paper in order to reduce the number of goal candidates.
         # In this implementation, we use goal scoring instead of lane scoring, because we observed that it performs slightly better than lane scoring.
         # Here goals_2D are sparse cnadidate goals sampled from map.
-        if 'goal_scoring' in args.other_params:
-            goals_2D_tensor = torch.tensor(goals_2D, device=device, dtype=torch.float)
-            scores = self.get_scores(goals_2D_tensor, *get_scores_inputs)
-            index = torch.argmax(scores).item()
-            highest_goal = goals_2D[index]
+        # goal scoring is a mandatory component of the goals_2D path:
+        # get_scores_of_dense_goals below consumes `scores` unconditionally,
+        # so computing it here unconditionally (as upstream DenseTNT does)
+        # avoids an UnboundLocalError when 'goal_scoring' is absent from
+        # other_params while goals_2D is enabled.
+        goals_2D_tensor = torch.tensor(goals_2D, device=device, dtype=torch.float)
+        scores = self.get_scores(goals_2D_tensor, *get_scores_inputs)
+        index = torch.argmax(scores).item()
+        highest_goal = goals_2D[index]
 
         # Get dense goals and their scores.
         # With the help of the above goal scoring, we can reduce the number of dense goals.

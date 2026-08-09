@@ -283,10 +283,16 @@ def demo_basic(rank, world_size, kwargs, queue):
                 model.module.load_state_dict(ckpt['model_state_dict'])
             else:
                 model.load_state_dict(ckpt['model_state_dict'])
-            optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            try:
+                optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            except (ValueError, RuntimeError) as e:
+                print(f'[Resume] Skipping optimizer state: {e}')
             start_epoch = ckpt['epoch']
             if optimizer_2 is not None and 'optimizer_2_state_dict' in ckpt:
-                optimizer_2.load_state_dict(ckpt['optimizer_2_state_dict'])
+                try:
+                    optimizer_2.load_state_dict(ckpt['optimizer_2_state_dict'])
+                except (ValueError, RuntimeError) as e:
+                    print(f'[Resume] Skipping optimizer_2 state: {e}')
             print(f'[Resume] Starting from epoch {start_epoch}')
         else:
             print(f'[Resume] No checkpoint found, starting from scratch')

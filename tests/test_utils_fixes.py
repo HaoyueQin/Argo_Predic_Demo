@@ -88,6 +88,30 @@ class TestRunProcessMRratio:
         assert len(qr.res) == 1
 
 
+class TestSubdividePointsDegenerate:
+    """get_subdivide_points 对退化多边形（<2 个顶点）返回空集，不除零（review P3-4）。"""
+
+    def test_single_point_returns_empty(self, utils_mod):
+        utils = utils_mod
+        assert utils.get_subdivide_points([(0.0, 0.0)]) == []
+
+    def test_empty_polygon_returns_empty(self, utils_mod):
+        utils = utils_mod
+        assert utils.get_subdivide_points([]) == []
+
+    def test_return_unit_vectors_keeps_tuple_shape(self, utils_mod):
+        utils = utils_mod
+        points, unit_vectors = utils.get_subdivide_points([(1.0, 1.0)], return_unit_vectors=True)
+        assert points == [] and unit_vectors == []
+
+    def test_normal_polygon_still_subdivides(self, utils_mod):
+        utils = utils_mod
+        pts = utils.get_subdivide_points([(0.0, 0.0), (10.0, 0.0)], threshold=1.0)
+        # 10m 边按 1m 阈值细分 → 10 等分 + include_self=False 时 9 个插入点
+        assert len(pts) == 9
+        assert pts[0][0] == pytest.approx(1.0)
+
+
 class TestPoolLoadFileContract:
     def test_returns_compressed_and_vector_num(self, monkeypatch):
         """_pool_load_file 返回 (compressed, vector_num)，供主进程聚合。"""

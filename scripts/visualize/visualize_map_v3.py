@@ -170,6 +170,10 @@ def visualize(scene_id, model, dense_args, am, device, output_dir, data_dir):
     hist_global = inverse_transform(hist_local, cent_x, cent_y, angle)
 
     # ── Sort predictions by probability ───────────────────────────────
+    # Model outputs log-softmax scores (negative); exponentiate to obtain
+    # actual probabilities before normalizing so displayed percentages are
+    # true probabilities, not normalized log scores.
+    pred_probs = np.exp(pred_probs.astype(np.float64))
     probs = pred_probs / pred_probs.sum()
     order = np.argsort(probs)[::-1]
     top_idx = order[0]

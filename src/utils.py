@@ -1122,6 +1122,13 @@ def get_FDE(points: np.ndarray, scores: np.ndarray, mapping, gt_goal=None, metho
 
 
 def get_subdivide_points(polygon, include_self=False, threshold=1.0, include_beside=False, return_unit_vectors=False):
+    if len(polygon) < 2:
+        # Degenerate polygon: no edges to subdivide, and the mean edge
+        # length below would divide by zero for len == 1.
+        if return_unit_vectors:
+            return [], []
+        return []
+
     def get_dis(point_a, point_b):
         return np.sqrt((point_a[0] - point_b[0]) ** 2 + (point_a[1] - point_b[1]) ** 2)
 
@@ -1396,7 +1403,12 @@ def select_goals_by_optimization(batch_gt_points, mapping, close=False):
 
     batch_file_name = get_from_mapping(mapping, 'file_name')
 
-    assert args.core_num >= 2
+    if args.core_num < 2:
+        raise ValueError(
+            "select_goals_by_optimization requires at least 2 worker processes "
+            f"(got core_num={args.core_num}); the optimizer spawns a process "
+            "pool per batch — rerun with --core_num >= 2."
+        )
 
     run_times = 8
     for _ in range(run_times):

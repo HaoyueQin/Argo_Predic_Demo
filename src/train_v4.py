@@ -251,9 +251,16 @@ def do_validate(args, epoch, model_save_dir, model):
         try:
             eval_dataset = MemDataset(val_args, args.eval_batch_size, to_screen=True)
         except Exception:
-            # cache doesn't exist, build from scratch
-            val_args.reuse_temp_file = False
-            eval_dataset = MemDataset(val_args, args.eval_batch_size, to_screen=True)
+            # 缓存不存在时禁止在 spawn 子进程内全量重建：
+            # (1) fork 继承的 ArgoverseMap 状态会损坏（与上面 chunked 注释同理）；
+            # (2) 全量验证样本进内存会在 16GB 机器上 OOM。
+            # 正确做法是让主进程重新构建验证缓存后再 spawn。
+            raise RuntimeError(
+                "[Val] in-memory fallback cache missing. Rebuilding the full "
+                "validation set inside the spawned process is unsafe (forked "
+                "ArgoverseMap corruption / memory spike). Rerun the training "
+                "entry so the main process rebuilds the validation cache first."
+            ) from None
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = torch.utils.data.DataLoader(
         eval_dataset, batch_size=args.eval_batch_size,
