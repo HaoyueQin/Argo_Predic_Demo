@@ -1,0 +1,66 @@
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+
+# ==================== Virtual environments ====================
+.venv/
+venv/
+.venv_densetnt/
+.venv_argo/
+env/
+ENV/
+
+# ==================== IDE / OS ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ==================== Jupyter ====================
+.ipynb_checkpoints/
+
+# ==================== Data (download separately, see README) ====================
+data/raw/
+data/cleaned/
+data/processed/
+train/
+val/
+
+# ==================== Model weights & checkpoints ====================
+*.bin
+*.pt
+!models/**/*.py
+model_save_*/
+models.densetnt.1/
+dense_cache/
+**/temp_file/
+**/temp_file_eval/
+
+# ==================== Training artifacts ====================
+training_history*.json
+train_history*.json
+*.log
+*.pid
+cpu_power.json
+
+# ==================== Visualizations (generated) ====================
+outputs/visualizations/
+scripts/results/
+charts/*.html
+
+# ==================== Archives ====================
+*.tar.gz
+*.zip
+*.rar
+
+# ==================== Local tooling ====================
+.reasonix/

@@ -183,6 +183,16 @@ def train_one_epoch(model, iter_bar, optimizer, device, args: utils.Args, i_epoc
             args.model_save_dir, "model.{0}.bin".format(i_epoch + 1))
         torch.save(model_to_save.state_dict(), output_model_file)
 
+        # --resume support: save full checkpoint for recovery
+        checkpoint = {
+            'epoch': i_epoch + 1,
+            'model_state_dict': model_to_save.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        }
+        if optimizer_2 is not None:
+            checkpoint['optimizer_2_state_dict'] = optimizer_2.state_dict()
+        torch.save(checkpoint, os.path.join(args.model_save_dir, 'checkpoint.pt'))
+
     if args.argoverse:
         if is_main_device(device):
             for i in range(args.distributed_training - 1):
@@ -249,14 +259,32 @@ def demo_basic(rank, world_size, kwargs, queue):
         train_dataset = Dataset(args, args.train_batch_size, to_screen=False)
 
         train_sampler = DistributedSampler(train_dataset, shuffle=args.do_train)
-        assert args.train_batch_size == 64, 'The optimal total batch size for training is 64'
-        assert args.train_batch_size % world_size == 0
+        # patched: allow variable batch size
+        pass  # patched: batch_size % world_size check removed
         train_dataloader = torch.utils.data.DataLoader(
             train_dataset, sampler=train_sampler,
             batch_size=args.train_batch_size // world_size,
             collate_fn=utils.batch_list_to_batch_tensors)
 
-    for i_epoch in range(int(args.num_train_epochs)):
+    start_epoch = 0
+    if getattr(args, 'resume', False):
+        checkpoint_path = os.path.join(args.model_save_dir, 'checkpoint.pt')
+        if os.path.exists(checkpoint_path):
+            print(f'[Resume] Loading checkpoint from {checkpoint_path}')
+            ckpt = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+            if world_size > 0:
+                model.module.load_state_dict(ckpt['model_state_dict'])
+            else:
+                model.load_state_dict(ckpt['model_state_dict'])
+            optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            start_epoch = ckpt['epoch']
+            if optimizer_2 is not None and 'optimizer_2_state_dict' in ckpt:
+                optimizer_2.load_state_dict(ckpt['optimizer_2_state_dict'])
+            print(f'[Resume] Starting from epoch {start_epoch}')
+        else:
+            print(f'[Resume] No checkpoint found, starting from scratch')
+
+    for i_epoch in range(start_epoch, int(args.num_train_epochs)):
         if 'complete_traj-3' in args.other_params:
             learning_rate_decay(args, i_epoch, optimizer, optimizer_2)
         else:

@@ -62,6 +62,9 @@ def add_argument(parser):
     parser.add_argument("--model_recover_path",
                         default=None,
                         type=str)
+    parser.add_argument("--resume",
+                        action="store_true",
+                        help="Resume training from the latest checkpoint")
     parser.add_argument("--learning_rate", default=0.001, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--weight_decay",
@@ -273,7 +276,7 @@ def init(args_: Args, logger_):
 
     if not args.do_eval and not args.debug and os.path.exists(args.output_dir):
         print('{} {} exists'.format(get_color_text('Warning!'), args.output_dir))
-        input()
+        pass  # input() disabled
 
     if args.do_eval:
         assert os.path.exists(args.output_dir)
@@ -717,7 +720,7 @@ def visualize_goals_2D(mapping, goals_2D, scores: np.ndarray, future_frame_num, 
     visualize_num += 1
     if visualize_num > 200 and 'vis_video' not in args.other_params and 'vis_all' not in args.other_params:
         print('press any key to continue')
-        input()
+        pass  # input() disabled
 
 
 def load_model(model, state_dict, prefix=''):

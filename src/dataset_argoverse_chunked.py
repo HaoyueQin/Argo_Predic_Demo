@@ -1,3 +1,22 @@
+# ==============================================================================
+# dataset_argoverse_chunked.py
+# Chunked-disk version of dataset_argoverse.py for full 205k training on 16GB RAM.
+#
+# Key change: instead of keeping ALL compressed data in self.ex_list (10-30GB RAM),
+# each entry is written as an individual compressed file on disk.
+# self.ex_list stores only file paths (~20MB total).
+# __getitem__ reads + decompresses on demand.
+# OS page cache automatically caches hot files → negligible I/O overhead after epoch 1.
+#
+# Improvements:
+#   - Auto-detect existing cache: even with reuse_temp_file=False, if cache exists
+#     it will be loaded instead of reprocessing 205k files (~3-10 min saved).
+#   - Persist max_vector_num alongside ex_list for accurate logging.
+#   - Backward-compatible pickle format (dict with 'ex_list' + 'max_vector_num').
+#
+# Original dataset_argoverse.py preserved as dataset_argoverse.py.bak.
+# ==============================================================================
+
 import copy
 import math
 import multiprocessing
@@ -29,20 +48,20 @@ def _init_pool_worker():
     import sys
     sys.stderr.flush()
 
-# PATCHED_V2: Module-level function for multiprocessing Pool (must be picklable)
+# PATCHED_CHUNK: _pool_load_file returns (index, compressed_data) instead of compressed_data
 def _pool_load_file(file_and_args):
-    """Load a single CSV and return compressed pickle."""
+    """Load a single CSV and return (file_index, compressed_pickle)."""
     import zlib as _zlib
     import pickle as _pickle
     import argparse as _argparse
-    file, args_dict = file_and_args
+    idx, file, args_dict = file_and_args
     try:
         with open(file, "r", encoding="utf-8") as fin:
             flines = fin.readlines()[1:]
         _args = _argparse.Namespace(**args_dict)
         instance = argoverse_get_instance(flines, file, _args)
         if instance is not None:
-            return _zlib.compress(_pickle.dumps(instance))
+            return (idx, _zlib.compress(_pickle.dumps(instance)))
     except Exception as e:
         if not hasattr(_pool_load_file, '_err_count'):
             _pool_load_file._err_count = 0
@@ -53,7 +72,7 @@ def _pool_load_file(file_and_args):
             import traceback
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
-    return None
+    return (idx, None)
 
 
 import utils_cython
@@ -475,68 +494,125 @@ def argoverse_get_instance(lines, file_name, args):
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, args, batch_size, to_screen=True):
+        # ==========================================================================
+        # PATCHED_CHUNK v2: Disk-backed ex_list with auto-detect cache reuse.
+        #
+        # Old behavior: self.ex_list holds ALL compressed bytes in memory (~10-30GB).
+        # New behavior: self.ex_list holds file paths (~20MB).
+        #   - First run: Pool processes CSVs → writes ex/{idx:06d}.pkl.z → saves
+        #     cache dict {ex_list, max_vector_num} via pickle.
+        #   - Subsequent runs: auto-detect pickle → skip Pool → load directly.
+        #     No --reuse_temp_file needed; works even with reuse_temp_file=False.
+        #
+        # __getitem__: reads + decompresses individual file on demand.
+        #   - Epoch 1: disk reads ~14GB (NVMe: ~10-20s, <2% of training time)
+        #   - Epoch 2+: OS page cache serves most reads from RAM
+        # ==========================================================================
         data_dir = args.data_dir
         self.ex_list = []
         self.args = args
 
+        # ===== Determine whether to load from cache or process from scratch =====
+        ex_list_pickle_path = os.path.join(args.temp_file_dir, get_name('ex_list'))
+        cache_loaded = False
+
         if args.reuse_temp_file:
-            pickle_file = open(os.path.join(args.temp_file_dir, get_name('ex_list')), 'rb')
-            self.ex_list = pickle.load(pickle_file)
-            # self.ex_list = self.ex_list[len(self.ex_list) // 2:]
-            pickle_file.close()
+            # Explicit reuse: load from pickle
+            with open(ex_list_pickle_path, 'rb') as f:
+                cache_data = pickle.load(f)
+            self._load_cache(cache_data, to_screen)
+            cache_loaded = True
         else:
+            # Auto-detect: if cache already exists, reuse it
+            if os.path.exists(ex_list_pickle_path) and os.path.getsize(ex_list_pickle_path) > 0:
+                try:
+                    with open(ex_list_pickle_path, 'rb') as f:
+                        cache_data = pickle.load(f)
+                    if isinstance(cache_data, dict) and 'ex_list' in cache_data:
+                        self.ex_list = cache_data['ex_list']
+                    else:
+                        # Backward compatibility: old format (plain list)
+                        self.ex_list = cache_data
+                    if len(self.ex_list) > 0:
+                        self._load_cache(cache_data, to_screen)
+                        cache_loaded = True
+                        if to_screen:
+                            print(f"[Chunked v2] Reusing {len(self.ex_list)} cached entries, "
+                                  f"max_vector_num={max_vector_num}")
+                except Exception as e:
+                    if to_screen:
+                        print(f"[Chunked v2] Cache load failed ({e}), reprocessing...")
+
+        if not cache_loaded:
+            # ===== First run: process all CSV files via multiprocessing =====
             global am
             am = ArgoverseMap()
             if args.core_num >= 1:
-                # TODO
                 files = []
                 for each_dir in data_dir:
                     root, dirs, cur_files = os.walk(each_dir).__next__()
                     files.extend([os.path.join(each_dir, file) for file in cur_files if
                                   file.endswith("csv") and not file.startswith('.')])
-                print(files[:5], files[-5:])
+                if to_screen:
+                    print(f"[Chunked v2] Processing {len(files)} files with {args.core_num} workers...")
+                    print(files[:5], files[-5:])
+
+                ex_dir = os.path.join(args.temp_file_dir, 'ex')
+                os.makedirs(ex_dir, exist_ok=True)
 
                 pbar = tqdm(total=len(files))
 
-                # PATCHED: Queue removed (using Pool)
-
-                # PATCHED: calc_ex_list removed (using Pool)
-
-                # PATCHED: use Pool instead of Queue (no deadlock)
-                # PATCHED_V2: use Pool with module-level function
                 args_dict = {k: v for k, v in vars(args).items()}
-                file_args_list = [(f, args_dict) for f in files]
+                file_args_list = [(i, f, args_dict) for i, f in enumerate(files)]
                 self.ex_list = []
-                with multiprocessing.Pool(processes=args.core_num,
-                                           initializer=_init_pool_worker) as pool:
+                _pool_ctx = multiprocessing.get_context('fork')
+                with _pool_ctx.Pool(processes=args.core_num,
+                                     initializer=_init_pool_worker) as pool:
                     results = pool.imap_unordered(_pool_load_file, file_args_list, chunksize=64)
-                    for result in results:
-                        if result is not None:
-                            self.ex_list.append(result)
+                    for idx, compressed in results:
+                        if compressed is not None:
+                            fpath = os.path.join(ex_dir, '{:06d}.pkl.z'.format(len(self.ex_list)))
+                            with open(fpath, 'wb') as f:
+                                f.write(compressed)
+                            self.ex_list.append(fpath)
                         pbar.update(1)
-
             else:
                 assert False
 
-            pickle_file = open(os.path.join(args.temp_file_dir, get_name('ex_list')), 'wb')
-            pickle.dump(self.ex_list, pickle_file)
-            pickle_file.close()
+            # Save as dict for future runs (includes max_vector_num)
+            cache_data = {'ex_list': self.ex_list, 'max_vector_num': max_vector_num}
+            with open(ex_list_pickle_path, 'wb') as f:
+                pickle.dump(cache_data, f)
+            if to_screen:
+                print(f"[Chunked v2] Cache saved: {len(self.ex_list)} entries, "
+                      f"max_vector_num={max_vector_num}")
+
         assert len(self.ex_list) > 0
         if to_screen:
             print("valid data size is", len(self.ex_list))
             logging('max_vector_num', max_vector_num)
         self.batch_size = batch_size
 
+    def _load_cache(self, cache_data, to_screen):
+        """Load ex_list and max_vector_num from cached pickle data."""
+        global max_vector_num
+        if isinstance(cache_data, dict) and 'ex_list' in cache_data:
+            self.ex_list = cache_data['ex_list']
+            if 'max_vector_num' in cache_data:
+                max_vector_num = cache_data['max_vector_num']
+        else:
+            # Backward compatibility: old format (plain list of paths)
+            self.ex_list = cache_data
+
     def __len__(self):
         return len(self.ex_list)
 
     def __getitem__(self, idx):
-        # file = self.ex_list[idx]
-        # pickle_file = open(file, 'rb')
-        # instance = pickle.load(pickle_file)
-        # pickle_file.close()
-
-        data_compress = self.ex_list[idx]
+        # PATCHED_CHUNK: read individual compressed file on demand
+        # OS page cache memoizes hot files automatically after first epoch
+        fpath = self.ex_list[idx]
+        with open(fpath, 'rb') as f:
+            data_compress = f.read()
         instance = pickle.loads(zlib.decompress(data_compress))
         return instance
 

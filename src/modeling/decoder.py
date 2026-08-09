@@ -250,10 +250,8 @@ class Decoder(nn.Module):
             if args.do_eval:
                 if args.nms_threshold is not None:
                     utils.select_goals_by_NMS(mapping[i], goals_2D, np.array(scores.tolist()), args.nms_threshold, mapping[i]['speed'])
-                elif 'optimization' in args.other_params:
-                    mapping[i]['goals_2D_scores'] = goals_2D.astype(np.float32), np.array(scores.tolist(), dtype=np.float32)
                 else:
-                    assert False
+                    mapping[i]['goals_2D_scores'] = goals_2D.astype(np.float32), np.array(scores.tolist(), dtype=np.float32)
 
     def goals_2D_eval(self, batch_size, mapping, labels, hidden_states, inputs, inputs_lengths, device):
         if 'set_predict' in args.other_params:
@@ -266,7 +264,13 @@ class Decoder(nn.Module):
             pred_goals_batch = [mapping[i]['pred_goals'] for i in range(batch_size)]
             pred_probs_batch = [mapping[i]['pred_probs'] for i in range(batch_size)]
         else:
-            assert False
+            pred_goals_batch, pred_probs_batch = [], []
+            for i in range(batch_size):
+                gs, ss = mapping[i]['goals_2D_scores']
+                top_k = min(self.mode_num, len(ss))
+                idx = np.argsort(ss)[::-1][:top_k]
+                pred_goals_batch.append(gs[idx])
+                pred_probs_batch.append(ss[idx])
 
         pred_goals_batch = np.array(pred_goals_batch)
         pred_probs_batch = np.array(pred_probs_batch)
